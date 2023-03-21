@@ -21,7 +21,7 @@ module NoahmpIOVarType
 !------------------------------------------------------------------------
 
     ! IN only (as defined in WRF)
-    integer                                                ::  ids,ide, &          ! d -> domain 
+    integer                                                ::  ids,ide, &          ! d -> domain
                                                                jds,jde, &          ! d -> domain
                                                                kds,kde, &          ! d -> domain
                                                                ims,ime, &          ! m -> memory
@@ -39,8 +39,8 @@ module NoahmpIOVarType
     integer                                                ::  ISWATER             ! land cover category for water
     integer                                                ::  ISLAKE              ! land cover category for lake
     integer                                                ::  URBTYPE_beg         ! urban type start number - 1
-    integer                                                ::  IOPT_DVEG           ! dynamic vegetation   
-    integer                                                ::  IOPT_CRS            ! canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)   
+    integer                                                ::  IOPT_DVEG           ! dynamic vegetation
+    integer                                                ::  IOPT_CRS            ! canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)
     integer                                                ::  IOPT_BTR            ! soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)
     integer                                                ::  IOPT_RUNSRF         ! surface runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS)
     integer                                                ::  IOPT_RUNSUB         ! subsurface runoff option
@@ -84,7 +84,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  XICE                ! fraction of grid that is seaice
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  SEAICE              ! seaice fraction
 
-    ! forcings    
+    ! forcings
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  T_PHY               ! 3D atmospheric temperature valid at mid-levels [K]
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  QV_CURR             ! 3D water vapor mixing ratio [kg/kg_dry]
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  U_PHY               ! 3D U wind component [m/s]
@@ -104,16 +104,33 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_RAINC            ! convective precipitation entering land model [mm] ! MB/AN : v3.7
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_RAINNC           ! large-scale precipitation entering land model [mm]! MB/AN : v3.7
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_SHCV             ! shallow conv precip entering land model [mm]      ! MB/AN : v3.7
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_SNOW             ! snow precipitation entering land model [mm]       ! MB/AN : v3.7 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_SNOW             ! snow precipitation entering land model [mm]       ! MB/AN : v3.7
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_GRAUP            ! graupel precipitation entering land model [mm]    ! MB/AN : v3.7
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_HAIL             ! hail precipitation entering land model [mm]       ! MB/AN : v3.7 
-    
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  MP_HAIL             ! hail precipitation entering land model [mm]       ! MB/AN : v3.7
+
 #ifdef WRF_HYDRO
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: infxsrt              ! surface infiltration
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: sfcheadrt            ! surface water head
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: soldrain             ! soil drainage
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: qtiledrain           ! tile drainage
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: ZWATBLE2D            ! water table depth
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: greenfrac
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: SHDMAX
+    character(len = 256)                                   :: GEO_STATIC_FLNM
+    integer                 :: finemesh
+    integer                 :: finemesh_factor
+    integer                 :: forc_typ
+    integer                 :: snow_assim
+    integer                 :: HRLDAS_ini_typ
+    ! =REFACTOR=
+    integer                 :: crocus_opt = 0
+    integer                 :: act_lev    = 0
+    integer                 :: rst_bi_out
+    integer                 :: rst_bi_in
+    character(len=256)      :: mmf_runoff_file = " "
+    integer                 :: IOPT_IMPERV = 9
+    integer                 :: IOPT_RUNOFF = 9
+
 #endif
 
     ! Spatially varying fields (for now it is de-activated)
@@ -122,7 +139,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  soilcl2             ! Soil texture class with depth
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  soilcl3             ! Soil texture class with depth
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  soilcl4             ! Soil texture class with depth
-    real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  bexp_3D             ! C-H B exponent  
+    real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  bexp_3D             ! C-H B exponent
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  smcdry_3D           ! Soil Moisture Limit: Dry
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  smcwlt_3D           ! Soil Moisture Limit: Wilt
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  smcref_3D           ! Soil Moisture Limit: Reference
@@ -134,10 +151,10 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  refdk_2D            ! Reference Soil Conductivity
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  refkdt_2D           ! Soil Infiltration Parameter
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  irr_frac_2D         ! irrigation Fraction
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  irr_har_2D          ! number of days before harvest date to stop irrigation 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  irr_har_2D          ! number of days before harvest date to stop irrigation
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  irr_lai_2D          ! Minimum lai to trigger irrigation
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  irr_mad_2D          ! management allowable deficit (0-1)
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  filoss_2D           ! fraction of flood irrigation loss (0-1) 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  filoss_2D           ! fraction of flood irrigation loss (0-1)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  sprir_rate_2D       ! mm/h, sprinkler irrigation rate
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  micir_rate_2D       ! mm/h, micro irrigation rate
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  firtfac_2D          ! flood application rate factor
@@ -152,7 +169,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  KLAT_FAC            ! factor multiplier to hydraulic conductivity
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TDSMC_FAC           ! factor multiplier to field capacity
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_DC               ! drainage coefficient for simple
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_DCOEF            ! drainge coefficient for Hooghoudt 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_DCOEF            ! drainge coefficient for Hooghoudt
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_DDRAIN           ! depth of drain
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_RADI             ! tile radius
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TD_SPAC             ! tile spacing
@@ -223,20 +240,20 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRFRACT              ! irrigation fraction
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: SIFRACT              ! sprinkler irrigation fraction
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: MIFRACT              ! micro irrigation fraction
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: FIFRACT              ! flood irrigation fraction   
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: FIFRACT              ! flood irrigation fraction
     integer, allocatable, dimension(:,:)                   :: IRNUMSI              ! irrigation event number, Sprinkler
     integer, allocatable, dimension(:,:)                   :: IRNUMMI              ! irrigation event number, Micro
-    integer, allocatable, dimension(:,:)                   :: IRNUMFI              ! irrigation event number, Flood 
+    integer, allocatable, dimension(:,:)                   :: IRNUMFI              ! irrigation event number, Flood
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRWATSI              ! irrigation water amount [m] to be applied, Sprinkler
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRWATMI              ! irrigation water amount [m] to be applied, Micro
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRWATFI              ! irrigation water amount [m] to be applied, Flood
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRELOSS              ! loss of irrigation water to evaporation,sprinkler [m/timestep]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRSIVOL              ! amount of irrigation by sprinkler (mm)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRMIVOL              ! amount of irrigation by micro (mm)
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRFIVOL              ! amount of irrigation by micro (mm)  
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRFIVOL              ! amount of irrigation by micro (mm)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: IRRSPLH              ! latent heating from sprinkler evaporation (w/m2)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: LOCTIM               ! local time
- 
+
     ! OUT (with no Noah LSM equivalent) (as defined in WRF)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  T2MVXY              ! 2m temperature of vegetation part
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  T2MBXY              ! 2m temperature of bare ground part
@@ -278,10 +295,10 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  IRBXY               ! bare net longwave rad. [w/m2] [+ to atm]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  TRXY                ! transpiration [w/m2]  [+ to atm]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  EVCXY               ! canopy evaporation heat [w/m2]  [+ to atm]
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHLEAFXY            ! leaf exchange coefficient 
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHUCXY              ! under canopy exchange coefficient 
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHV2XY              ! veg 2m exchange coefficient 
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHB2XY              ! bare 2m exchange coefficient 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHLEAFXY            ! leaf exchange coefficient
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHUCXY              ! under canopy exchange coefficient
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHV2XY              ! veg 2m exchange coefficient
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  CHB2XY              ! bare 2m exchange coefficient
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  RS                  ! Total stomatal resistance [s/m]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  Z0                  ! roughness length output to WRF
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  ZNT                 ! roughness length output to WRF
@@ -317,7 +334,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  FORCPLSM            ! surface pressure as LSM forcing [Pa]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  FORCZLSM            ! reference height as LSM input [m]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  FORCWLSM            ! surface wind speed as LSM forcing [m/s]
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  ACC_SSOILXY         ! accumulated ground heat flux [W/m2 * dt_soil/dt_main]  
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  ACC_SSOILXY         ! accumulated ground heat flux [W/m2 * dt_soil/dt_main]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  ACC_QINSURXY        ! accumulated water flux into soil [m/s * dt_soil/dt_main]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  ACC_QSEVAXY         ! accumulated soil surface evaporation [m/s * dt_soil/dt_main]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  EFLXBXY             ! accumulated heat flux through soil bottom per soil timestep [J/m2]
@@ -592,7 +609,7 @@ module NoahmpIOVarType
     character(len=256)                                     ::  indir
     ! nsoil defined above
     integer                                                ::  forcing_timestep
-    integer                                                ::  noah_timestep      
+    integer                                                ::  noah_timestep
     integer                                                ::  start_year
     integer                                                ::  start_month
     integer                                                ::  start_day
@@ -645,7 +662,7 @@ module NoahmpIOVarType
     logical                                                ::  skip_first_output
     integer                                                ::  khour
     integer                                                ::  kday
-    real(kind=kind_noahmp)                                 ::  zlvl 
+    real(kind=kind_noahmp)                                 ::  zlvl
     character(len=256)                                     ::  hrldas_setup_file
     character(len=256)                                     ::  spatial_filename
     character(len=256)                                     ::  external_veg_filename_template
@@ -660,7 +677,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp),  allocatable, dimension(:)     ::  soil_thick_input
 
 !----------------------------------------------------------------
-! Noahmp Parameters Table 
+! Noahmp Parameters Table
 !----------------------------------------------------------------
 
     ! vegetation parameters
@@ -693,13 +710,13 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:)      :: RC_TABLE                  ! tree crown radius (m)
     real(kind=kind_noahmp), allocatable, dimension(:)      :: MFSNO_TABLE               ! snowmelt curve parameter
     real(kind=kind_noahmp), allocatable, dimension(:)      :: SCFFAC_TABLE              ! snow cover factor (m) (replace original hard-coded 2.5*z0 in SCF formulation)
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: CBIOM_TABLE               ! canopy biomass heat capacity parameter (m) 
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: CBIOM_TABLE               ! canopy biomass heat capacity parameter (m)
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: SAIM_TABLE                ! monthly stem area index, one-sided
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: LAIM_TABLE                ! monthly leaf area index, one-sided
     real(kind=kind_noahmp), allocatable, dimension(:)      :: SLA_TABLE                 ! single-side leaf area per Kg [m2/kg]
     real(kind=kind_noahmp), allocatable, dimension(:)      :: DILEFC_TABLE              ! coeficient for leaf stress death [1/s]
     real(kind=kind_noahmp), allocatable, dimension(:)      :: DILEFW_TABLE              ! coeficient for leaf stress death [1/s]
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: FRAGR_TABLE               ! fraction of growth respiration  !original was 0.3 
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: FRAGR_TABLE               ! fraction of growth respiration  !original was 0.3
     real(kind=kind_noahmp), allocatable, dimension(:)      :: LTOVRC_TABLE              ! leaf turnover [1/s]
     real(kind=kind_noahmp), allocatable, dimension(:)      :: C3PSN_TABLE               ! photosynthetic pathway: 0. = c4, 1. = c3
     real(kind=kind_noahmp), allocatable, dimension(:)      :: KC25_TABLE                ! co2 michaelis-menten constant at 25c (pa)
@@ -795,7 +812,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp)                                 :: Z0LAKE_TABLE              ! Lake surface roughness length (m)
 
     ! irrigation parameters
-    integer                                                :: IRR_HAR_TABLE             ! number of days before harvest date to stop irrigation 
+    integer                                                :: IRR_HAR_TABLE             ! number of days before harvest date to stop irrigation
     real(kind=kind_noahmp)                                 :: IRR_FRAC_TABLE            ! irrigation Fraction
     real(kind=kind_noahmp)                                 :: IRR_LAI_TABLE             ! Minimum lai to trigger irrigation
     real(kind=kind_noahmp)                                 :: IRR_MAD_TABLE             ! management allowable deficit (0-1)
@@ -827,10 +844,10 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDTBASE_TABLE            ! Base temperature for GDD accumulation [C]
     real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDTCUT_TABLE             ! Upper temperature for GDD accumulation [C]
     real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS1_TABLE               ! GDD from seeding to emergence
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS2_TABLE               ! GDD from seeding to initial vegetative 
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS3_TABLE               ! GDD from seeding to post vegetative 
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS2_TABLE               ! GDD from seeding to initial vegetative
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS3_TABLE               ! GDD from seeding to post vegetative
     real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS4_TABLE               ! GDD from seeding to intial reproductive
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS5_TABLE               ! GDD from seeding to pysical maturity 
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: GDDS5_TABLE               ! GDD from seeding to pysical maturity
     real(kind=kind_noahmp), allocatable, dimension(:)      :: C3PSNI_TABLE              ! photosynthetic pathway: 0. = c4, 1. = c3 ! Zhe Zhang 2020-07-03
     real(kind=kind_noahmp), allocatable, dimension(:)      :: KC25I_TABLE               ! co2 michaelis-menten constant at 25c (pa)
     real(kind=kind_noahmp), allocatable, dimension(:)      :: AKCI_TABLE                ! q10 for kc25
@@ -842,7 +859,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:)      :: MPI_TABLE                 ! slope of conductance-to-photosynthesis relationship
     real(kind=kind_noahmp), allocatable, dimension(:)      :: QE25I_TABLE               ! quantum efficiency at 25c (umol co2 / umol photon)
     real(kind=kind_noahmp), allocatable, dimension(:)      :: FOLNMXI_TABLE             ! foliage nitrogen concentration when f(n)=1 (%)
-    real(kind=kind_noahmp), allocatable, dimension(:)      :: AREF_TABLE                ! reference maximum CO2 assimulation rate 
+    real(kind=kind_noahmp), allocatable, dimension(:)      :: AREF_TABLE                ! reference maximum CO2 assimulation rate
     real(kind=kind_noahmp), allocatable, dimension(:)      :: PSNRF_TABLE               ! CO2 assimulation reduction factor(0-1) (caused by non-modeled part, pest,weeds)
     real(kind=kind_noahmp), allocatable, dimension(:)      :: I2PAR_TABLE               ! Fraction of incoming solar radiation to photosynthetically active radiation
     real(kind=kind_noahmp), allocatable, dimension(:)      :: TASSIM0_TABLE             ! Minimum temperature for CO2 assimulation [C]
@@ -866,7 +883,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: STPT_TABLE                ! fraction of carbohydrate flux to stem
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: RTPT_TABLE                ! fraction of carbohydrate flux to root
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: GRAINPT_TABLE             ! fraction of carbohydrate flux to grain
-    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: LFCT_TABLE                ! fraction of carbohydrate translocation from leaf to grain 
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    :: LFCT_TABLE                ! fraction of carbohydrate translocation from leaf to grain
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: STCT_TABLE                ! fraction of carbohydrate translocation from stem to grain
     real(kind=kind_noahmp), allocatable, dimension(:,:)    :: RTCT_TABLE                ! fraction of carbohydrate translocation from root to grain
     real(kind=kind_noahmp), allocatable, dimension(:)      :: BIO2LAI_TABLE             ! leaf area per living leaf biomass [m2/kg]
