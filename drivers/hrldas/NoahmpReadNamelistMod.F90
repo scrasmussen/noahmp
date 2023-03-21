@@ -28,7 +28,7 @@ contains
 !---------------------------------------------------------------------
 
     ! local namelist variables
-    
+
     character(len=256)      :: indir = '.'
     integer                 :: ierr
     integer                 :: NSOIL                 ! number of soil layers
@@ -53,7 +53,7 @@ contains
     integer                 :: num_urban_nf     = 10
     integer                 :: num_urban_nz     = 18
     integer                 :: num_urban_nbui   = 15
-    integer                 :: num_urban_hi     = 15 
+    integer                 :: num_urban_hi     = 15
     integer                 :: num_urban_ngr    = 10  ! = ngr_u in bep_bem.F
     integer                 :: noahmp_output    = 0
     real(kind=kind_noahmp)  :: urban_atmosphere_thickness = 2.0
@@ -88,7 +88,7 @@ contains
     integer                 :: soil_data_option                   = 1
     integer                 :: pedotransfer_option                = 1
     integer                 :: crop_option                        = 0
-    integer                 :: irrigation_option                  = 0 
+    integer                 :: irrigation_option                  = 0
     integer                 :: irrigation_method                  = 0
     integer                 :: dvic_infiltration_option           = 1
     integer                 :: tile_drainage_option               = 0
@@ -109,10 +109,23 @@ contains
     integer                 :: yend                               = 0
     integer, parameter      :: MAX_SOIL_LEVELS                    = 10     ! maximum soil levels in namelist
     real(kind=kind_noahmp), dimension(MAX_SOIL_LEVELS) :: soil_thick_input ! depth to soil interfaces from namelist [m]
-    
+#ifdef WRF_HYDRO
+    ! NOT USING FROM HERE
+    integer                 :: finemesh
+    integer                 :: finemesh_factor
+    integer                 :: forc_typ
+    integer                 :: snow_assim
+    character(len = 256)    :: GEO_STATIC_FLNM
+    integer                 :: HRLDAS_ini_typ
+    ! TO HERE RIGHT NOW
+    integer :: rst_bi_in = 0
+    integer :: rst_bi_out = 0
+#endif
+
     namelist / NOAHLSM_OFFLINE /    &
 #ifdef WRF_HYDRO
          finemesh,finemesh_factor,forc_typ, snow_assim , GEO_STATIC_FLNM, HRLDAS_ini_typ, &
+         rst_bi_in, rst_bi_out, &
 #endif
          indir, nsoil, soil_thick_input, forcing_timestep, noah_timestep, soil_timestep,  &
          start_year, start_month, start_day, start_hour, start_min,                       &
@@ -132,7 +145,7 @@ contains
          sf_urban_physics,use_wudapt_lcz,num_urban_hi,urban_atmosphere_thickness,         &
          num_urban_ndm,num_urban_ng,num_urban_nwr ,num_urban_ngb ,                        &
          num_urban_nf ,num_urban_nz,num_urban_nbui,num_urban_ngr ,                        &
-         split_output_count,                                                              & 
+         split_output_count,                                                              &
          khour, kday, zlvl, hrldas_setup_file,                                            &
          spatial_filename, agdata_flnm, tdinput_flnm,                                     &
          external_veg_filename_template, external_lai_filename_template,                  &
@@ -146,6 +159,7 @@ contains
     if (.not. allocated(NoahmpIO%soil_thick_input)) allocate(NoahmpIO%soil_thick_input(1:MAX_SOIL_LEVELS))
     NoahmpIO%nsoil                   = undefined_int
     NoahmpIO%soil_thick_input        = undefined_real
+    ! allocate(NoahmpIO%soil_thick_input(MAX_SOIL_LEVELS))  ! should this be here?
     NoahmpIO%DTBL                    = undefined_real
     NoahmpIO%soiltstep               = undefined_real
     NoahmpIO%start_year              = undefined_int
@@ -166,7 +180,7 @@ contains
     !---------------------------------------------------------------
     ! read namelist.input
     !---------------------------------------------------------------
-    
+
     open(30, file="namelist.hrldas", form="FORMATTED")
     read(30, NOAHLSM_OFFLINE, iostat=ierr)
     if (ierr /= 0) then
@@ -176,7 +190,7 @@ contains
        stop " ***** ERROR: Problem reading namelist NOAHLSM_OFFLINE"
     endif
     close(30)
-  
+
     NoahmpIO%DTBL            = real(noah_timestep)
     NoahmpIO%soiltstep       = soil_timestep
     NoahmpIO%NSOIL           = nsoil
@@ -184,7 +198,7 @@ contains
     !---------------------------------------------------------------------
     !  NAMELIST end
     !---------------------------------------------------------------------
-   
+
     !---------------------------------------------------------------------
     !  NAMELIST check begin
     !---------------------------------------------------------------------
@@ -208,10 +222,10 @@ contains
         write(*, '(" *****      Either KHOUR or KDAY must be defined.")')
         write(*, '(" ***** ")')
         stop
-    else if (( khour < 0 ) .and. (kday > 0)) then
-        khour = kday * 24
     else if ((khour > 0) .and. (kday > 0)) then
         write(*, '("Namelist warning:  KHOUR and KDAY both defined.")')
+    else if (( khour < 0 ) .and. (kday > 0)) then
+        khour = kday * 24
     else
         ! all is well.  KHOUR defined
     endif
@@ -315,12 +329,12 @@ contains
          stop
        endif
     endif
-    
+
     !---------------------------------------------------------------------
     !  Transfer Namelist locals to input data structure
     !---------------------------------------------------------------------
-    ! physics option 
-    NoahmpIO%IOPT_DVEG                         = dynamic_veg_option 
+    ! physics option
+    NoahmpIO%IOPT_DVEG                         = dynamic_veg_option
     NoahmpIO%IOPT_CRS                          = canopy_stomatal_resistance_option
     NoahmpIO%IOPT_BTR                          = btr_option
     NoahmpIO%IOPT_RUNSRF                       = surface_runoff_option
@@ -331,7 +345,7 @@ contains
     NoahmpIO%IOPT_RAD                          = radiative_transfer_option
     NoahmpIO%IOPT_ALB                          = snow_albedo_option
     NoahmpIO%IOPT_SNF                          = pcp_partition_option
-    NoahmpIO%IOPT_TKSNO                        = snow_thermal_conductivity 
+    NoahmpIO%IOPT_TKSNO                        = snow_thermal_conductivity
     NoahmpIO%IOPT_TBOT                         = tbot_option
     NoahmpIO%IOPT_STC                          = temp_time_scheme_option
     NoahmpIO%IOPT_GLA                          = glacier_option
@@ -395,8 +409,8 @@ contains
     NoahmpIO%xend                              = xend
     NoahmpIO%yend                              = yend
     NoahmpIO%MAX_SOIL_LEVELS                   = MAX_SOIL_LEVELS
-    NoahmpIO%soil_thick_input                  = soil_thick_input 
- 
+    NoahmpIO%soil_thick_input                  = soil_thick_input
+
 !---------------------------------------------------------------------
 !  NAMELIST check end
 !---------------------------------------------------------------------
