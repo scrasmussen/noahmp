@@ -93,6 +93,7 @@ module NoahmpIOVarType
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  GLW                 ! longwave down at surface [W m-2]
     real(kind=kind_noahmp), allocatable, dimension(:,:,:)  ::  P8W                 ! 3D pressure, valid at interface [Pa]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  RAINBL              ! precipitation entering land model [mm] per time step
+    real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  RAINBL_TMP          ! precipitation forcing entering land model [mm/s]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  SNOWBL              ! snow entering land model [mm] per time step
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  SR                  ! frozen precip ratio entering land model [-]
     real(kind=kind_noahmp), allocatable, dimension(:,:)    ::  RAINCV              ! convective precip forcing [mm]
