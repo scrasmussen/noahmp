@@ -97,7 +97,11 @@ contains
     ! leaf boundary layer resistance
     TMPRB                  = WindExtCoeffCanopy * 50.0 / (1.0 - exp(-WindExtCoeffCanopy/2.0))
     ResistanceLeafBoundary = TMPRB * sqrt(LeafDimLength / WindSpdCanopyTop)
+#ifdef NOAHMP_LEGACY_PHYSICS
+    ResistanceLeafBoundary = max(ResistanceLeafBoundary, 20.0)                ! legacy: match old built-in NoahMP (floor at 20, no upper bound)
+#else
     ResistanceLeafBoundary = min(max(ResistanceLeafBoundary, 5.0), 50.0)      ! limit ResistanceLeafBoundary to 5-50, typically <50
+#endif
 
     end associate
 

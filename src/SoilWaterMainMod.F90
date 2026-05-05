@@ -52,6 +52,8 @@ contains
     real(kind=kind_noahmp)            :: DrainSoilBotAcc              ! accumulated drainage water [mm] at fine time step
     real(kind=kind_noahmp)            :: RunoffSurfaceAcc             ! accumulated surface runoff [mm] at fine time step
     real(kind=kind_noahmp)            :: InfilSfcAcc                  ! accumulated infiltration rate [m/s]
+    real(kind=kind_noahmp)            :: SoilSubsurfDef               ! accumulated subsurface deficit from negative-SH2O floor [m]
+    real(kind=kind_noahmp)            :: SubDeficit                   ! per-iteration subsurface deficit [m]
     real(kind=kind_noahmp), parameter :: SoilImpPara = 4.0            ! soil impervious fraction parameter
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft1     ! left-hand side term
@@ -77,7 +79,7 @@ contains
               RechargeGwDeepWT       => noahmp%water%state%RechargeGwDeepWT         ,& ! inout, recharge to or from the water table when deep [m]
               DrainSoilBot           => noahmp%water%flux%DrainSoilBot              ,& ! out,   soil bottom drainage [m/s]
               RunoffSurface          => noahmp%water%flux%RunoffSurface             ,& ! out,   surface runoff [mm per soil timestep]
-              RunoffSubsurface       => noahmp%water%flux%RunoffSubsurface          ,& ! out,   subsurface runoff [mm per soil timestep] 
+              RunoffSubsurface       => noahmp%water%flux%RunoffSubsurface          ,& ! out,   subsurface runoff [mm per soil timestep]
               InfilRateSfc           => noahmp%water%flux%InfilRateSfc              ,& ! out,   infiltration rate at surface [m/s]
               TileDrain              => noahmp%water%flux%TileDrain                 ,& ! out,   tile drainage [mm per soil timestep]
               SoilImpervFracMax      => noahmp%water%state%SoilImpervFracMax        ,& ! out,   maximum soil imperviousness fraction
@@ -107,6 +109,8 @@ contains
     InfilRateSfc     = 0.0
     SoilSatExcAcc    = 0.0
     InfilSfcAcc      = 1.0e-06
+    SoilSubsurfDef   = 0.0
+    SubDeficit       = 0.0
 
     ! for the case when snowmelt water is too large
     do LoopInd1 = 1, NumSoilLayer
@@ -169,7 +173,8 @@ contains
           if ( OptRunoffSurface == 8 ) call RunoffSurfaceDynamicVic(noahmp,TimeStepFine,InfilSfcAcc)
        endif
        call SoilWaterDiffusionRichards(noahmp, MatLeft1, MatLeft2, MatLeft3, MatRight)
-       call SoilMoistureSolver(noahmp, TimeStepFine, MatLeft1, MatLeft2, MatLeft3, MatRight)
+       call SoilMoistureSolver(noahmp, TimeStepFine, MatLeft1, MatLeft2, MatLeft3, MatRight, SubDeficit)
+       SoilSubsurfDef   = SoilSubsurfDef + SubDeficit
        SoilSatExcAcc    = SoilSatExcAcc + SoilSaturationExcess
        DrainSoilBotAcc  = DrainSoilBotAcc + DrainSoilBot
        RunoffSurfaceAcc = RunoffSurfaceAcc + RunoffSurface
@@ -233,6 +238,14 @@ contains
           SoilLiqWater(LoopInd2) = SoilLiqTmp(LoopInd2) / (ThicknessSnowSoilLayer(LoopInd2)*1000.0)
        enddo
     endif ! OptRunoffSubsurface /= 1
+
+
+#ifdef NOAHMP_LEGACY_PHYSICS
+    ! Close column water budget for the WATMIN floor applied inside SoilMoistureSolver:
+    ! deficit lifted out of the bottom layer (where there is no layer below to borrow
+    ! from) is debited from subsurface runoff. Mirrors legacy SSTEP/RUNSUB fix.
+    RunoffSubsurface = RunoffSubsurface - SoilSubsurfDef * 1000.0 / SoilTimeStep
+#endif
 
     ! compute groundwater and subsurface runoff
     if ( OptRunoffSubsurface == 1 ) call RunoffSubSurfaceGroundWater(noahmp)

@@ -108,10 +108,15 @@ contains
           ThicknessSnowSoilLayer(LoopInd) = max(ThicknessSnowSoilLayer(LoopInd), &
                                             SnowIce(LoopInd)/ConstDensityIce + SnowLiqWater(LoopInd)/ConstDensityWater)
 
+#ifndef NOAHMP_LEGACY_PHYSICS
           ! Constrain snow density to a reasonable range (50~500 kg/m3)
+          ! Refactor-introduced clamp (not present in legacy COMPACT). Skipped when
+          ! NOAHMP_LEGACY_PHYSICS is on so dense old snow can exceed 500 kg/m3, as
+          ! in the legacy NWM run.
           ThicknessSnowSoilLayer(LoopInd) = min( max( ThicknessSnowSoilLayer(LoopInd),&
                                                      (SnowIce(LoopInd)+SnowLiqWater(LoopInd))/500.0 ), &
                                                 (SnowIce(LoopInd)+SnowLiqWater(LoopInd))/50.0 )
+#endif
        endif
 
        ! Pressure of overlying snow

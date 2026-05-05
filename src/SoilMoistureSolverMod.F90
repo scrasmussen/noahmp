@@ -12,7 +12,7 @@ module SoilMoistureSolverMod
 
 contains
 
-  subroutine SoilMoistureSolver(noahmp, TimeStep, MatLeft1, MatLeft2, MatLeft3, MatRight)
+  subroutine SoilMoistureSolver(noahmp, TimeStep, MatLeft1, MatLeft2, MatLeft3, MatRight, SubDeficit)
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: SSTEP
@@ -25,14 +25,17 @@ contains
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
     real(kind=kind_noahmp), intent(in)    :: TimeStep                               ! timestep (may not be the same as model timestep)
+    real(kind=kind_noahmp), intent(out)   :: SubDeficit                             ! per-call subsurface deficit from negative-SH2O fix [m]
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight    ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1    ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft2    ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft3    ! left-hand side term of the matrix
 
 ! local variable
-    integer                                           :: LoopInd                    ! soil layer loop index 
+    integer                                           :: LoopInd                    ! soil layer loop index
     real(kind=kind_noahmp)                            :: WatDefiTmp                 ! temporary water deficiency
+    real(kind=kind_noahmp)                            :: WatMinFloor                ! per-layer WATMIN floor [m3/m3]
+    real(kind=kind_noahmp)                            :: WatMinusTmp                ! water deficit below WATMIN [m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRightTmp                ! temporary MatRight matrix coefficient
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft3Tmp                ! temporary MatLeft3 matrix coefficient
 
@@ -62,6 +65,7 @@ contains
     MatLeft3Tmp          = 0.0
     SoilSaturationExcess = 0.0
     SoilEffPorosity(:)   = 0.0
+    SubDeficit           = 0.0
 
     ! update tri-diagonal matrix elements
     do LoopInd = 1, NumSoilLayer
@@ -134,6 +138,28 @@ contains
                                        ThicknessSnowSoilLayer(NumSoilLayer)
        SoilLiqWater(NumSoilLayer)    = min(SoilEffPorosity(NumSoilLayer), SoilLiqWater(NumSoilLayer))
     endif
+
+#ifdef NOAHMP_LEGACY_PHYSICS
+    ! WATMIN floor: if any layer went negative, lift it to a tiny floor and pull
+    ! the deficit from the layer below. Final-layer deficit (no layer below to
+    ! borrow from) is returned via SubDeficit so the caller can debit RunoffSubsurface
+    ! and keep the column water budget closed. Mirrors legacy SSTEP fix.
+    if ( any(SoilLiqWater < 0.0) ) then
+       do LoopInd = 1, NumSoilLayer-1
+          WatMinFloor                = 1.0e-5 / ThicknessSnowSoilLayer(LoopInd)
+          WatMinusTmp                = max((WatMinFloor - SoilLiqWater(LoopInd)) * &
+                                           ThicknessSnowSoilLayer(LoopInd), 0.0)
+          SoilLiqWater(LoopInd)      = max(WatMinFloor, SoilLiqWater(LoopInd))
+          SoilLiqWater(LoopInd+1)    = SoilLiqWater(LoopInd+1) - &
+                                       WatMinusTmp / ThicknessSnowSoilLayer(LoopInd+1)
+       enddo
+       WatMinFloor                   = 1.0e-5 / ThicknessSnowSoilLayer(NumSoilLayer)
+       WatMinusTmp                   = max((WatMinFloor - SoilLiqWater(NumSoilLayer)) * &
+                                           ThicknessSnowSoilLayer(NumSoilLayer), 0.0)
+       SoilLiqWater(NumSoilLayer)    = max(WatMinFloor, SoilLiqWater(NumSoilLayer))
+       SubDeficit                    = WatMinusTmp
+    endif
+#endif
 
     SoilMoisture = SoilLiqWater + SoilIce
 

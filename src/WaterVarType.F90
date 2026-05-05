@@ -122,7 +122,7 @@ module WaterVarType
     real(kind=kind_noahmp) :: TileDrainFrac              ! tile drainage fraction
     real(kind=kind_noahmp) :: WaterStorageAquifer        ! water storage in aquifer [mm]
     real(kind=kind_noahmp) :: WaterStorageSoilAqf        ! water storage in aquifer + saturated soil [mm]
-    real(kind=kind_noahmp) :: WaterStorageLake           ! water storage in lake (can be negative) [mm] 
+    real(kind=kind_noahmp) :: WaterStorageLake           ! water storage in lake (can be negative) [mm]
     real(kind=kind_noahmp) :: WaterHeadSfc               ! surface water head [mm]
     real(kind=kind_noahmp) :: IrrigationFracGrid         ! total irrigation fraction from input for a grid
     real(kind=kind_noahmp) :: PrecipAreaFrac             ! fraction of the gridcell that receives precipitation
@@ -148,7 +148,7 @@ module WaterVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilImpervFrac        ! fraction of imperviousness due to frozen soil
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatConductivity   ! soil hydraulic/water conductivity [m/s]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatDiffusivity    ! soil water diffusivity [m2/s]
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilEffPorosity       ! soil effective porosity [m3/m3] 
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilEffPorosity       ! soil effective porosity [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureEqui      ! equilibrium soil water  content [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilTranspFac         ! soil water transpiration factor (0 to 1)
     real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIceVol            ! partial volume of snow ice [m3/m3]
@@ -170,7 +170,7 @@ module WaterVarType
     real(kind=kind_noahmp) :: SnowCompactBurdenFac       ! overburden snow compaction parameter [m3/kg]
     real(kind=kind_noahmp) :: SnowCompactAgingFac1       ! snow desctructive metamorphism compaction parameter1 [1/s]
     real(kind=kind_noahmp) :: SnowCompactAgingFac2       ! snow desctructive metamorphism compaction parameter2 [1/k]
-    real(kind=kind_noahmp) :: SnowCompactAgingFac3       ! snow desctructive metamorphism compaction parameter3 
+    real(kind=kind_noahmp) :: SnowCompactAgingFac3       ! snow desctructive metamorphism compaction parameter3
     real(kind=kind_noahmp) :: SnowCompactAgingMax        ! upper Limit on destructive metamorphism compaction [kg/m3]
     real(kind=kind_noahmp) :: SnowViscosityCoeff         ! snow viscosity coefficient [kg-s/m2], Anderson1979: 0.52e6~1.38e6
     real(kind=kind_noahmp) :: SnowLiqFracMax             ! maximum liquid water fraction in snow
@@ -219,6 +219,7 @@ module WaterVarType
     real(kind=kind_noahmp) :: SoilMatPotentialWilt       ! soil metric potential for wilting point [m]
     real(kind=kind_noahmp) :: SnowMeltFac                ! snowmelt m parameter in snow cover fraction calculation
     real(kind=kind_noahmp) :: SnowCoverFac               ! snow cover factor [m] (originally hard-coded 2.5*z0 in SCF formulation)
+    real(kind=kind_noahmp) :: SnowCoverFracMax           ! max fractional snow covered area (legacy SCAMAX); only used when NOAHMP_LEGACY_PHYSICS is on
 
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureSat        ! saturated value of soil moisture [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureWilt       ! wilting point soil moisture [m3/m3]

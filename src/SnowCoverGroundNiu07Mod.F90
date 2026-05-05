@@ -28,11 +28,12 @@ contains
 
 ! --------------------------------------------------------------------
     associate(                                                     &
-              SnowMeltFac    => noahmp%water%param%SnowMeltFac    ,& ! in,  snowmelt m parameter
-              SnowCoverFac   => noahmp%water%param%SnowCoverFac   ,& ! in,  snow cover factor [m]
-              SnowDepth      => noahmp%water%state%SnowDepth      ,& ! in,  snow depth [m]
-              SnowWaterEquiv => noahmp%water%state%SnowWaterEquiv ,& ! in,  snow water equivalent [mm]
-              SnowCoverFrac  => noahmp%water%state%SnowCoverFrac   & ! out, snow cover fraction
+              SnowMeltFac     => noahmp%water%param%SnowMeltFac     ,& ! in,  snowmelt m parameter
+              SnowCoverFac    => noahmp%water%param%SnowCoverFac    ,& ! in,  snow cover factor [m]
+              SnowCoverFracMax=> noahmp%water%param%SnowCoverFracMax,& ! in,  legacy SCAMAX cap (only used when NOAHMP_LEGACY_PHYSICS)
+              SnowDepth       => noahmp%water%state%SnowDepth       ,& ! in,  snow depth [m]
+              SnowWaterEquiv  => noahmp%water%state%SnowWaterEquiv  ,& ! in,  snow water equivalent [mm]
+              SnowCoverFrac   => noahmp%water%state%SnowCoverFrac    & ! out, snow cover fraction
              )
 ! ----------------------------------------------------------------------
 
@@ -42,6 +43,12 @@ contains
          MeltFac       = (SnowDensBulk / 100.0)**SnowMeltFac
         !SnowCoverFrac = tanh( SnowDepth /(2.5 * Z0 * MeltFac))
          SnowCoverFrac = tanh( SnowDepth /(SnowCoverFac * MeltFac)) ! C.He: bring hard-coded 2.5*z0 to MPTABLE
+#ifdef NOAHMP_LEGACY_PHYSICS
+         ! Legacy NoahMP capped FSNO at parameters%SCAMAX (a per-cell field from
+         ! SPATIAL_SOIL); the He-et-al refactor dropped that cap. Restore it for
+         ! bit-reproduction. Bridge sets SnowCoverFracMax = SCAMAX_2D(I,J).
+         SnowCoverFrac = SnowCoverFracMax * SnowCoverFrac
+#endif
     endif
 
     end associate

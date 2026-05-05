@@ -299,8 +299,12 @@ contains
           HeatLatentCanEvap = min(CanopyIce*LatHeatVapCanopy/MainTimeStep, HeatLatentCanEvap)
        endif
        ! canopy heat capacity
+#ifdef NOAHMP_LEGACY_PHYSICS
+       HeatCapacCan         = 0.0                                              ! legacy: match old built-in NoahMP (no canopy heat storage in N-R solver)
+#else
        HeatCapacCan         = HeatCapacCanFac*VegAreaIndTmp*ConstHeatCapacWater + CanopyLiqWater*ConstHeatCapacWater/ConstDensityWater + &
                               CanopyIce*ConstHeatCapacIce/ConstDensityIce      ! [J/m2/K]
+#endif
        ! compute vegetation temperature change
        EnergyResTmp         = RadSwAbsVeg - RadLwNetCanopy - HeatSensibleCanopy - &
                               HeatLatentCanEvap - HeatLatentCanTransp + HeatPrecipAdvCanopy
