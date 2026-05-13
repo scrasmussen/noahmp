@@ -112,9 +112,15 @@ contains
        InterceptCanopySnow = max( InterceptCanopySnow, 0.0 )
        IceDripFacTemp      = max( 0.0, (TemperatureCanopy - 270.15) / 1.87e5 )
        IceDripFacWind      = sqrt(WindEastwardRefHeight**2.0 + WindNorthwardRefHeight**2.0) / 1.56e5
-       ! MB: changed below to reflect the rain assumption that all precip gets intercepted 
+       ! MB: changed below to reflect the rain assumption that all precip gets intercepted
        CanopySnowDrip      = max( 0.0, CanopyIce ) * (IceDripFacWind + IceDripFacTemp)
+#ifndef NOAHMP_LEGACY_PHYSICS
+       ! Refactor added a water-balance cap on the snow-unloading rate so it
+       ! cannot exceed the canopy snow plus the incoming intercepted snowfall.
+       ! Legacy PRECIP_HEAT lacks this cap (excessive drip is absorbed when
+       ! CanopyIce clips to 0). Disable the cap for legacy bit-reproduction.
        CanopySnowDrip      = min( CanopyIce/MainTimeStep + InterceptCanopySnow, CanopySnowDrip) ! add constraint to keep water balance
+#endif
        DripCanopySnow      = (VegFrac * SnowfallRefHeight - InterceptCanopySnow) + CanopySnowDrip
        ThroughfallSnow     = (1.0 - VegFrac) * SnowfallRefHeight
        CanopyIce           = max( 0.0, CanopyIce + (InterceptCanopySnow-CanopySnowDrip)*MainTimeStep )

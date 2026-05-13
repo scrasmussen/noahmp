@@ -100,7 +100,16 @@ contains
     if ( CanopyIce <= 1.0e-6 ) CanopyIce = 0.0
 
     ! wetted fraction of canopy
+    ! Refactor added the `CanopyIce >= CanopyLiqWater` clause so the snow-
+    ! capacity branch is only used when ice dominates. Legacy CANWATER uses
+    ! the looser `CANICE > 0` test (and the same loose test appears in the
+    ! refactored CanopyWaterIntercept, so this is also a refactor-internal
+    ! inconsistency). Relax to the legacy form under NOAHMP_LEGACY_PHYSICS.
+#ifdef NOAHMP_LEGACY_PHYSICS
+    if ( CanopyIce > 0.0 ) then
+#else
     if ( (CanopyIce > 0.0) .and. (CanopyIce >= CanopyLiqWater) ) then
+#endif
        CanopyWetFrac = max(0.0,CanopyIce) / max(CanopyIceMax,1.0e-06)
     else
        CanopyWetFrac = max(0.0,CanopyLiqWater) / max(CanopyLiqWaterMax,1.0e-06)
