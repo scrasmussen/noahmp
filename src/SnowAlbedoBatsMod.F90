@@ -55,7 +55,7 @@ contains
     SolarAngleFac1   = 1.0 / SolarAngleFac
     SolarAngleFac2   = 2.0 * SolarAngleFac
     ZenithAngFacTmp  = (1.0 + SolarAngleFac1) / (1.0 + SolarAngleFac2*CosSolarZenithAngle) - SolarAngleFac1
-    ZenithAngFac     = amax1(ZenithAngFacTmp, 0.0)
+    ZenithAngFac     = max(ZenithAngFacTmp, 0.0)
     AlbedoSnowDif(1) = FreshSnoAlbVisBats * (1.0 - SnoAgeFacDifVisBats * SnowAgeFac)
     AlbedoSnowDif(2) = FreshSnoAlbNirBats * (1.0 - SnoAgeFacDifNirBats * SnowAgeFac)
     AlbedoSnowDir(1) = AlbedoSnowDif(1) + SzaFacDirVisBats * ZenithAngFac * (1.0 - AlbedoSnowDif(1))

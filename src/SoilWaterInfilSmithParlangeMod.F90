@@ -57,7 +57,7 @@ contains
 
        ! estimate initial soil hydraulic conductivty (Ki in the equation) (m/s)
        call SoilDiffusivityConductivityOpt2(noahmp, SoilWatDiffusivity, SoilWatConductivity, &
-                                            SoilMoistureWilt(IndSoil), 0.0, IndSoil)
+                                            SoilMoistureWilt(IndSoil), 0.0_kind_noahmp, IndSoil)
 
        ! Maximum infiltrability based on the Eq. 6.25. (m/s)
        InfilFacTmp = InfilCapillaryDynVic * (SoilMoistureSat(IndSoil) - SoilMoistureWilt(IndSoil)) * &

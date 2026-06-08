@@ -47,6 +47,17 @@ if(NOAHMP_LEGACY_PHYSICS)
     target_compile_definitions(noahmp_submodule PUBLIC NOAHMP_LEGACY_PHYSICS)
 endif()
 
+# Optional double-precision build: promotes kind_noahmp from 4 to 8 in
+# noahmp/utility/Machine.F90, so all real(kind=kind_noahmp) variables inside
+# the submodule are computed at FP64. The bridge driver and the rest of
+# WRF-Hydro remain at FP32; the bridge handles conversions at the boundary.
+# Use this to test whether the FP32 reorder-noise threshold-flip residual
+# disappears when the submodule's internal arithmetic is FP64.
+option(NOAHMP_DOUBLE_PREC "Compute NoahMP submodule physics at FP64" OFF)
+if(NOAHMP_DOUBLE_PREC)
+    target_compile_definitions(noahmp_submodule PUBLIC DOUBLE_PREC)
+endif()
+
 # Ensure free-form line length is unlimited for gfortran
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     target_compile_options(noahmp_submodule PRIVATE -ffree-line-length-none)

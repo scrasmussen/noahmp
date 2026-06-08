@@ -56,13 +56,13 @@ contains
        SnowAgeTimeFac = MainTimeStep / SnowAgeFacBats
        SnowGrowVapExp = SnowGrowVapFacBats * (1.0/ConstFreezePoint - 1.0/TemperatureGrd)
        SnowAgeVapEff  = exp(SnowGrowVapExp)
-       SnowAgeFrzEff  = exp(amin1(0.0, SnowGrowFrzFacBats*SnowGrowVapExp))
+       SnowAgeFrzEff  = exp(min(0.0, SnowGrowFrzFacBats*SnowGrowVapExp))
        SnowAgeSootEff = SnowSootFacBats
        SnowAgeFacTot  = SnowAgeVapEff + SnowAgeFrzEff + SnowAgeSootEff
        SnowAgeChg     = SnowAgeTimeFac * SnowAgeFacTot
-       SnowFreshFac   = amax1(0.0, SnowWaterEquiv-SnowWaterEquivPrev) / SnowMassFullCoverOld
+       SnowFreshFac   = max(0.0, SnowWaterEquiv-SnowWaterEquivPrev) / SnowMassFullCoverOld
        SnowAgeTmp     = (SnowAgeNondim + SnowAgeChg) * (1.0 - SnowFreshFac)
-       SnowAgeNondim  = amax1(0.0, SnowAgeTmp)
+       SnowAgeNondim  = max(0.0, SnowAgeTmp)
     endif
 
     SnowAgeFac = SnowAgeNondim / (SnowAgeNondim + 1.0)
