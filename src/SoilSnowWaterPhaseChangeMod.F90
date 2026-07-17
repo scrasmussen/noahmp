@@ -13,6 +13,9 @@ module SoilSnowWaterPhaseChangeMod
 contains
 
   subroutine SoilSnowWaterPhaseChange(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: PHASECHANGE
@@ -31,6 +34,15 @@ contains
     real(kind=kind_noahmp)                :: SnowWaterPrev                  ! old/previous snow water equivalent [kg/m2]
     real(kind=kind_noahmp)                :: SnowWaterRatio                 ! ratio of previous vs updated snow water equivalent 
     real(kind=kind_noahmp)                :: HeatLhTotPhsChg                ! total latent heat of phase change
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: EnergyRes
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: WaterPhaseChg
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MassWatTotInit
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MassWatIceInit
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MassWatLiqInit
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MassWatIceTmp
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MassWatLiqTmp
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: EnergyRes          ! energy residual [w/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: WaterPhaseChg      ! melting or freezing water [kg/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: MassWatTotInit     ! initial total water (ice + liq) mass
@@ -38,6 +50,7 @@ contains
     real(kind=kind_noahmp), allocatable, dimension(:) :: MassWatLiqInit     ! initial liquid content
     real(kind=kind_noahmp), allocatable, dimension(:) :: MassWatIceTmp      ! soil/snow ice mass [mm]
     real(kind=kind_noahmp), allocatable, dimension(:) :: MassWatLiqTmp      ! soil/snow liquid water mass [mm]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -67,6 +80,7 @@ contains
 ! ----------------------------------------------------------------------
 
     !--- Initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(EnergyRes)     ) allocate(EnergyRes     (-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(WaterPhaseChg) ) allocate(WaterPhaseChg (-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MassWatTotInit)) allocate(MassWatTotInit(-NumSnowLayerMax+1:NumSoilLayer))
@@ -74,6 +88,7 @@ contains
     if (.not. allocated(MassWatLiqInit)) allocate(MassWatLiqInit(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MassWatIceTmp) ) allocate(MassWatIceTmp (-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MassWatLiqTmp) ) allocate(MassWatLiqTmp (-NumSnowLayerMax+1:NumSoilLayer))
+#endif
     EnergyRes          = 0.0
     WaterPhaseChg      = 0.0
     MassWatTotInit     = 0.0
@@ -243,6 +258,7 @@ contains
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(EnergyRes     )
     deallocate(WaterPhaseChg )
     deallocate(MassWatTotInit)
@@ -250,6 +266,7 @@ contains
     deallocate(MassWatLiqInit)
     deallocate(MassWatIceTmp )
     deallocate(MassWatLiqTmp )
+#endif
 
     end associate
 

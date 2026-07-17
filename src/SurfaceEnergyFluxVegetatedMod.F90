@@ -9,6 +9,9 @@ module SurfaceEnergyFluxVegetatedMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : log => acc_logf
+#endif
   use VaporPressureSaturationMod,          only : VaporPressureSaturation
   use ResistanceAboveCanopyMostMod,        only : ResistanceAboveCanopyMOST
   use ResistanceAboveCanopyChen97Mod,      only : ResistanceAboveCanopyChen97
@@ -21,6 +24,9 @@ module SurfaceEnergyFluxVegetatedMod
 contains
 
   subroutine SurfaceEnergyFluxVegetated(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: VEGE_FLUX
@@ -201,17 +207,23 @@ contains
     WindSpdCanopyTop = WindSpdRefHeight * log((CanopyHeight - ZeroPlaneDispSfc + RoughLenMomSfc)/RoughLenMomSfc) / &
                        log(RefHeightAboveGrd/RoughLenMomSfc)                                           ! MB: add ZeroPlaneDispSfc v3.7
     if ( (CanopyHeight-ZeroPlaneDispSfc) <= 0.0 ) then
+#ifdef NOAHMP_ACC_COLUMNS
+       CanopyHeight = ZeroPlaneDispSfc + max(RoughLenMomSfc, 1.0e-6)
+       WindSpdCanopyTop = WindSpdRefHeight
+#else
        print*, "CRITICAL PROBLEM: CanopyHeight <= ZeroPlaneDispSfc"
        print*, "GridIndexI,GridIndexJ = ", GridIndexI, GridIndexJ
        print*, "CanopyHeight = "         , CanopyHeight
        print*, "ZeroPlaneDispSfc = "     , ZeroPlaneDispSfc
        print*, "SnowDepth = "            , SnowDepth
        stop "Error: ZeroPlaneDisp problem in NoahMP LSM"
+#endif
     endif
 
     ! prepare for longwave rad.
     LwCoeffAir = -EmissivityVeg * (1.0 + (1.0-EmissivityVeg)*(1.0-EmissivityGrd)) * RadLwDownRefHeight - &
-                  EmissivityVeg * EmissivityGrd * ConstStefanBoltzmann * TemperatureGrdVeg**4
+                  EmissivityVeg * EmissivityGrd * ConstStefanBoltzmann * &
+                  TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg
     LwCoeffCan = (2.0 - EmissivityVeg * (1.0-EmissivityGrd)) * EmissivityVeg * ConstStefanBoltzmann
 
     ! begin stability iteration for canopy temperature and flux
@@ -228,7 +240,9 @@ contains
 
        ! aerodyn resistances between RefHeightAboveGrd and d+z0v
        if ( OptSurfaceDrag == 1 ) call ResistanceAboveCanopyMOST(noahmp, IndIter, ShCanTmp, MoStabParaSgn)
+#ifndef NOAHMP_ACC_COLUMNS
        if ( OptSurfaceDrag == 2 ) call ResistanceAboveCanopyChen97(noahmp, IndIter)
+#endif
 
        ! aerodyn resistance between z0g and d+z0v, and leaf boundary layer resistance
        call ResistanceLeafToGround(noahmp, IndIter, VegAreaIndTmp, ShGrdTmp)
@@ -252,12 +266,14 @@ contains
              IndexShade = 1 ! shaded case
              call ResistanceCanopyStomataBallBerry(noahmp, IndexShade)
           endif
+#ifndef NOAHMP_ACC_COLUMNS
           if ( OptStomataResistance == 2 ) then  ! Jarvis
              IndexShade = 0 ! sunlit case
              call ResistanceCanopyStomataJarvis(noahmp, IndexShade)
              IndexShade = 1 ! shaded case
              call ResistanceCanopyStomataJarvis(noahmp, IndexShade)
           endif
+#endif
        endif
 
        ! sensible heat conductance and coeff above veg.
@@ -286,7 +302,8 @@ contains
        ! evaluate surface fluxes with current temperature and solve for temperature change
        TemperatureCanopyAir = TempShGhTmp + ExchCoeffShFrac * TemperatureCanopy                        ! canopy air T.
        PressureVaporCanAir  = VapPresLhTot + ExchCoeffEtFrac * VapPresSatCanopy                        ! canopy air e
-       RadLwNetCanopy       = VegFrac * (LwCoeffAir + LwCoeffCan * TemperatureCanopy**4)
+       RadLwNetCanopy       = VegFrac * (LwCoeffAir + LwCoeffCan * &
+                              TemperatureCanopy*TemperatureCanopy*TemperatureCanopy*TemperatureCanopy)
        HeatSensibleCanopy   = VegFrac * DensityAirRefHeight * ConstHeatCapacAir * &
                               ExchCoeffShLeafTmp * (TemperatureCanopy - TemperatureCanopyAir)
        HeatLatentCanEvap    = VegFrac * DensityAirRefHeight * ConstHeatCapacAir * ExchCoeffLhEvap * &
@@ -308,11 +325,12 @@ contains
        ! compute vegetation temperature change
        EnergyResTmp         = RadSwAbsVeg - RadLwNetCanopy - HeatSensibleCanopy - &
                               HeatLatentCanEvap - HeatLatentCanTransp + HeatPrecipAdvCanopy
-       FluxTotCoeff         = VegFrac * (4.0*LwCoeffCan*TemperatureCanopy**3 + ShCoeff + &
+       FluxTotCoeff         = VegFrac * (4.0*LwCoeffCan*TemperatureCanopy*TemperatureCanopy*TemperatureCanopy + ShCoeff + &
                                         (LhCoeff+TranspHeatCoeff)*VapPresSatCanTempD) + HeatCapacCan/MainTimeStep     ! volumetric heat capacity
        TemperatureCanChg    = EnergyResTmp / FluxTotCoeff
        ! update fluxes with temperature change
-       RadLwNetCanopy       = RadLwNetCanopy + VegFrac * 4.0 * LwCoeffCan * TemperatureCanopy**3 * TemperatureCanChg
+       RadLwNetCanopy       = RadLwNetCanopy + VegFrac * 4.0 * LwCoeffCan * &
+                              TemperatureCanopy*TemperatureCanopy*TemperatureCanopy * TemperatureCanChg
        HeatSensibleCanopy   = HeatSensibleCanopy + VegFrac * ShCoeff * TemperatureCanChg
        HeatLatentCanEvap    = HeatLatentCanEvap + VegFrac * LhCoeff * VapPresSatCanTempD * TemperatureCanChg
        HeatLatentCanTransp  = HeatLatentCanTransp  + VegFrac * TranspHeatCoeff * VapPresSatCanTempD * TemperatureCanChg
@@ -337,7 +355,8 @@ contains
 
     ! under-canopy fluxes and ground temperature
     LwCoeffAir   = -EmissivityGrd * (1.0 - EmissivityVeg) * RadLwDownRefHeight - &
-                    EmissivityGrd * EmissivityVeg * ConstStefanBoltzmann * TemperatureCanopy**4
+                    EmissivityGrd * EmissivityVeg * ConstStefanBoltzmann * &
+                    TemperatureCanopy*TemperatureCanopy*TemperatureCanopy*TemperatureCanopy
     LwCoeffCan   = EmissivityGrd * ConstStefanBoltzmann
     ShCoeff      = DensityAirRefHeight * ConstHeatCapacAir / ResistanceShUndCan
     LhCoeff      = DensityAirRefHeight * ConstHeatCapacAir / (PsychConstGrd * (ResistanceLhUndCan+ResistanceGrdEvap))  ! Barlage: change to ground v3.6
@@ -353,15 +372,17 @@ contains
           VapPresSatGrdVeg      = VapPresSatIceTmp
           VapPresSatGrdVegTempD = VapPresSatIceTmpD
        endif
-       RadLwNetVegGrd     = LwCoeffCan * TemperatureGrdVeg**4 + LwCoeffAir
+       RadLwNetVegGrd     = LwCoeffCan * TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg + LwCoeffAir
        HeatSensibleVegGrd = ShCoeff * (TemperatureGrdVeg - TemperatureCanopyAir)
        HeatLatentVegGrd   = LhCoeff * (VapPresSatGrdVeg*RelHumidityGrd - PressureVaporCanAir)
        HeatGroundVegGrd   = GrdHeatCoeff * (TemperatureGrdVeg - TemperatureSoilSnow(NumSnowLayerNeg+1))
        EnergyResTmp       = RadSwAbsGrd - RadLwNetVegGrd - HeatSensibleVegGrd - &
                             HeatLatentVegGrd - HeatGroundVegGrd + HeatPrecipAdvVegGrd
-       FluxTotCoeff       = 4.0 * LwCoeffCan * TemperatureGrdVeg**3 + ShCoeff + LhCoeff*VapPresSatGrdVegTempD + GrdHeatCoeff
+       FluxTotCoeff       = 4.0 * LwCoeffCan * TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg + ShCoeff + &
+                            LhCoeff*VapPresSatGrdVegTempD + GrdHeatCoeff
        TemperatureGrdChg  = EnergyResTmp / FluxTotCoeff
-       RadLwNetVegGrd     = RadLwNetVegGrd + 4.0 * LwCoeffCan * TemperatureGrdVeg**3 * TemperatureGrdChg
+       RadLwNetVegGrd     = RadLwNetVegGrd + 4.0 * LwCoeffCan * TemperatureGrdVeg*TemperatureGrdVeg* &
+                            TemperatureGrdVeg * TemperatureGrdChg
        HeatSensibleVegGrd = HeatSensibleVegGrd + ShCoeff * TemperatureGrdChg
        HeatLatentVegGrd   = HeatLatentVegGrd + LhCoeff * VapPresSatGrdVegTempD * TemperatureGrdChg
        HeatGroundVegGrd   = HeatGroundVegGrd + GrdHeatCoeff * TemperatureGrdChg
@@ -378,8 +399,10 @@ contains
           if ( OptSnowSoilTempTime == 3 ) &
              TemperatureGrdVeg = (1.0 - SnowCoverFrac) * TemperatureGrdVeg + SnowCoverFrac * ConstFreezePoint   ! MB: allow TemperatureGrdVeg>0C during melt v3.7
 
-          RadLwNetVegGrd     = LwCoeffCan * TemperatureGrdVeg**4 - EmissivityGrd * (1.0-EmissivityVeg) * RadLwDownRefHeight - &
-                               EmissivityGrd * EmissivityVeg * ConstStefanBoltzmann * TemperatureCanopy**4
+          RadLwNetVegGrd     = LwCoeffCan * TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg*TemperatureGrdVeg - &
+                               EmissivityGrd * (1.0-EmissivityVeg) * RadLwDownRefHeight - &
+                               EmissivityGrd * EmissivityVeg * ConstStefanBoltzmann * &
+                               TemperatureCanopy*TemperatureCanopy*TemperatureCanopy*TemperatureCanopy
           HeatSensibleVegGrd = ShCoeff * (TemperatureGrdVeg - TemperatureCanopyAir)
           HeatLatentVegGrd   = LhCoeff * (VapPresSatGrdVeg*RelHumidityGrd - PressureVaporCanAir)
           HeatGroundVegGrd   = RadSwAbsGrd + HeatPrecipAdvVegGrd - (RadLwNetVegGrd + HeatSensibleVegGrd + HeatLatentVegGrd)

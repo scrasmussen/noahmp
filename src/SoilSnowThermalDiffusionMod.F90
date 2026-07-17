@@ -15,6 +15,9 @@ module SoilSnowThermalDiffusionMod
 contains
 
   subroutine SoilSnowThermalDiffusion(noahmp, MatLeft1, MatLeft2, MatLeft3, MatRight)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: HRT
@@ -26,18 +29,32 @@ contains
 
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+#else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight  ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1  ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft2  ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft3  ! left-hand side term of the matrix
+#endif
 
 ! local variable
     integer                                           :: LoopInd                  ! loop index
     real(kind=kind_noahmp)                            :: DepthSnowSoilTmp         ! temporary snow/soil layer depth [m]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: DepthSnowSoilInv
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: HeatCapacPerArea
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: TempGradDepth
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: EnergyExcess
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: DepthSnowSoilInv         ! inverse of snow/soil layer depth [1/m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: HeatCapacPerArea         ! Heat capacity of soil/snow per area [J/m2/K]
     real(kind=kind_noahmp), allocatable, dimension(:) :: TempGradDepth            ! temperature gradient (derivative) with soil/snow depth [K/m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: EnergyExcess             ! energy flux excess in soil/snow [W/m2]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                           &
@@ -59,10 +76,12 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(DepthSnowSoilInv)) allocate(DepthSnowSoilInv(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(HeatCapacPerArea)) allocate(HeatCapacPerArea(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(TempGradDepth)   ) allocate(TempGradDepth   (-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(EnergyExcess)    ) allocate(EnergyExcess    (-NumSnowLayerMax+1:NumSoilLayer))
+#endif
     MatRight(:)         = 0.0
     MatLeft1(:)         = 0.0
     MatLeft2(:)         = 0.0
@@ -129,10 +148,12 @@ contains
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(DepthSnowSoilInv)
     deallocate(HeatCapacPerArea)
     deallocate(TempGradDepth   )
     deallocate(EnergyExcess    )
+#endif
 
     end associate
 

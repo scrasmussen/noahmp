@@ -6,6 +6,9 @@ module SurfaceAlbedoMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf
+#endif
   use SnowAgingBatsMod,            only : SnowAgingBats
   use SnowAlbedoBatsMod,           only : SnowAlbedoBats
   use SnowAlbedoClassMod,          only : SnowAlbedoClass
@@ -17,6 +20,9 @@ module SurfaceAlbedoMod
 contains
 
   subroutine SurfaceAlbedo(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: ALBEDO
@@ -120,7 +126,9 @@ contains
 
        ! snow albedos
        if ( OptSnowAlbedo == 1 )  call SnowAlbedoBats(noahmp)
+#ifndef NOAHMP_ACC_COLUMNS
        if ( OptSnowAlbedo == 2 )  call SnowAlbedoClass(noahmp)
+#endif
 
        ! ground surface albedo
        call GroundAlbedo(noahmp)

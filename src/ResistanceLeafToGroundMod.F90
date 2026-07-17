@@ -5,12 +5,18 @@ module ResistanceLeafToGroundMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf
+#endif
 
   implicit none
 
 contains
 
   subroutine ResistanceLeafToGround(noahmp, IndIter, VegAreaIndEff, HeatSenGrdTmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: RAGRB
@@ -68,11 +74,11 @@ contains
        TMP1 = ConstVonKarman * (ConstGravityAcc / TemperatureCanopyAir) * HeatSenGrdTmp / &
               (DensityAirRefHeight * ConstHeatCapacAir)
        if ( abs(TMP1) <= MPE ) TMP1 = MPE
-       MoLengthUndCan   = -1.0 * FrictionVelVeg**3 / TMP1
+       MoLengthUndCan   = -1.0 * FrictionVelVeg*FrictionVelVeg*FrictionVelVeg / TMP1
        MoStabParaUndCan = min((ZeroPlaneDispSfc-RoughLenMomGrd)/MoLengthUndCan, 1.0)
     endif
     if ( MoStabParaUndCan < 0.0 ) then
-       FHGNEW = (1.0 - 15.0 * MoStabParaUndCan)**(-0.25)
+       FHGNEW = 1.0 / sqrt(sqrt(1.0 - 15.0 * MoStabParaUndCan))
     else
        FHGNEW = 1.0 + 4.7 * MoStabParaUndCan
     endif
@@ -83,7 +89,7 @@ contains
     endif
 
     ! wind attenuation within canopy
-    WindExtCoeffCanopy = (CanopyWindExtFac * VegAreaIndEff * CanopyHeight * MoStabCorrShUndCan)**0.5
+    WindExtCoeffCanopy = sqrt(CanopyWindExtFac * VegAreaIndEff * CanopyHeight * MoStabCorrShUndCan)
     TMP1               = exp(-WindExtCoeffCanopy * RoughLenShVegGrd / CanopyHeight)
     TMP2               = exp(-WindExtCoeffCanopy * (RoughLenShCanopy + ZeroPlaneDispSfc) / CanopyHeight)
     TMPRAH2            = CanopyHeight * exp(WindExtCoeffCanopy) / WindExtCoeffCanopy * (TMP1-TMP2)

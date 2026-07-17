@@ -13,6 +13,9 @@ module SnowLayerDivideMod
 contains
 
   subroutine SnowLayerDivide(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: DIVIDE
@@ -32,10 +35,17 @@ contains
     real(kind=kind_noahmp)           :: SnowLiqExtra                         ! extra snow liquid water to be divided compared to allowed layer thickness
     real(kind=kind_noahmp)           :: SnowFracExtra                        ! fraction of extra snow to be divided compared to allowed layer thickness
     real(kind=kind_noahmp)           :: SnowTempGrad                         ! temperature gradient between two snow layers
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowThickTmp        ! snow layer thickness [m]
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIceTmp          ! partial volume of ice [m3/m3]
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqTmp          ! partial volume of liquid water [m3/m3]
-    real(kind=kind_noahmp), allocatable, dimension(:) :: TemperatureSnowTmp  ! node temperature [K]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSnowLayer) :: SnowThickTmp        ! snow layer thickness [m]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSnowLayer) :: SnowIceTmp          ! partial volume of ice [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSnowLayer) :: SnowLiqTmp          ! partial volume of liquid water [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSnowLayer) :: TemperatureSnowTmp  ! node temperature [K]
+#else
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowThickTmp                 ! snow layer thickness [m]
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIceTmp                   ! partial volume of ice [m3/m3]
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqTmp                   ! partial volume of liquid water [m3/m3]
+    real(kind=kind_noahmp), allocatable, dimension(:) :: TemperatureSnowTmp           ! node temperature [K]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -49,10 +59,12 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(SnowIceTmp)        ) allocate(SnowIceTmp        (1:NumSnowLayerMax))
     if (.not. allocated(SnowLiqTmp)        ) allocate(SnowLiqTmp        (1:NumSnowLayerMax))
     if (.not. allocated(TemperatureSnowTmp)) allocate(TemperatureSnowTmp(1:NumSnowLayerMax))
     if (.not. allocated(SnowThickTmp)      ) allocate(SnowThickTmp      (1:NumSnowLayerMax))
+#endif
     SnowIceTmp        (:) = 0.0
     SnowLiqTmp        (:) = 0.0
     TemperatureSnowTmp(:) = 0.0
@@ -148,10 +160,12 @@ contains
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(SnowIceTmp        )
     deallocate(SnowLiqTmp        )
     deallocate(TemperatureSnowTmp)
     deallocate(SnowThickTmp      )
+#endif
 
     end associate
 

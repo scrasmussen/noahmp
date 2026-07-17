@@ -6,6 +6,9 @@ module SoilHydraulicPropertyMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : pow => acc_powf
+#endif
 
   implicit none
 
@@ -13,6 +16,9 @@ contains
 
   subroutine SoilDiffusivityConductivityOpt1(noahmp, SoilWatDiffusivity, SoilWatConductivity, &
                                              SoilMoisture, SoilImpervFrac, IndLayer)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: WDFCND1
@@ -47,12 +53,12 @@ contains
 
     ! soil water diffusivity
     SoilExpTmp         = SoilExpCoeffB(IndLayer) + 2.0
-    SoilWatDiffusivity = SoilWatDiffusivitySat(IndLayer) * SoilPreFac ** SoilExpTmp
+    SoilWatDiffusivity = SoilWatDiffusivitySat(IndLayer) * pow(SoilPreFac, SoilExpTmp)
     SoilWatDiffusivity = SoilWatDiffusivity * (1.0 - SoilImpervFrac)
 
     ! soil hydraulic conductivity
     SoilExpTmp          = 2.0 * SoilExpCoeffB(IndLayer) + 3.0
-    SoilWatConductivity = SoilWatConductivitySat(IndLayer) * SoilPreFac ** SoilExpTmp
+    SoilWatConductivity = SoilWatConductivitySat(IndLayer) * pow(SoilPreFac, SoilExpTmp)
     SoilWatConductivity = SoilWatConductivity * (1.0 - SoilImpervFrac)
 
     end associate
@@ -62,6 +68,9 @@ contains
 
   subroutine SoilDiffusivityConductivityOpt2(noahmp, SoilWatDiffusivity, SoilWatConductivity, &
                                              SoilMoisture, SoilIce, IndLayer)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: WDFCND2
@@ -100,16 +109,16 @@ contains
 
     ! soil water diffusivity
     SoilExpTmp         = SoilExpCoeffB(IndLayer) + 2.0
-    SoilWatDiffusivity = SoilWatDiffusivitySat(IndLayer) * SoilPreFac2 ** SoilExpTmp
+    SoilWatDiffusivity = SoilWatDiffusivitySat(IndLayer) * pow(SoilPreFac2, SoilExpTmp)
     if ( SoilIce > 0.0 ) then
-       SoilIceWgt         = 1.0 / (1.0 + (500.0 * SoilIce)**3.0)
+       SoilIceWgt         = 1.0 / (1.0 + (500.0 * SoilIce)*(500.0 * SoilIce)*(500.0 * SoilIce))
        SoilWatDiffusivity = SoilIceWgt * SoilWatDiffusivity + &
-                            (1.0-SoilIceWgt) * SoilWatDiffusivitySat(IndLayer) * SoilPreFac1**SoilExpTmp
+                            (1.0-SoilIceWgt) * SoilWatDiffusivitySat(IndLayer) * pow(SoilPreFac1, SoilExpTmp)
     endif
 
     ! soil hydraulic conductivity
     SoilExpTmp          = 2.0 * SoilExpCoeffB(IndLayer) + 3.0
-    SoilWatConductivity = SoilWatConductivitySat(IndLayer) * SoilPreFac2 ** SoilExpTmp
+    SoilWatConductivity = SoilWatConductivitySat(IndLayer) * pow(SoilPreFac2, SoilExpTmp)
 
     end associate
 

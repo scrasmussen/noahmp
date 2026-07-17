@@ -6,12 +6,18 @@ module CanopyHydrologyMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine CanopyHydrology(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: CANWATER
@@ -114,7 +120,7 @@ contains
     else
        CanopyWetFrac = max(0.0,CanopyLiqWater) / max(CanopyLiqWaterMax,1.0e-06)
     endif
-    CanopyWetFrac    = min(CanopyWetFrac, 1.0) ** 0.667
+    CanopyWetFrac    = pow(min(CanopyWetFrac, 1.0), 0.667)
     CanopyTotalWater = CanopyLiqWater + CanopyIce
 
     ! phase change

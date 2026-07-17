@@ -52,12 +52,18 @@ module EnergyMainMod
   use SurfaceEnergyFluxBareGroundMod, only : SurfaceEnergyFluxBareGround
   use SoilSnowTemperatureMainMod,     only : SoilSnowTemperatureMain
   use SoilSnowWaterPhaseChangeMod,    only : SoilSnowWaterPhaseChange
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod,      only : sqrt => acc_sqrtf
+#endif
 
   implicit none
 
 contains
 
   subroutine EnergyMain(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: ENERGY
@@ -287,12 +293,16 @@ contains
     ! emitted longwave radiation and physical check
     RadLwEmitSfc = RadLwDownRefHeight + RadLwNetSfc
     if ( RadLwEmitSfc <= 0.0 ) then
+#ifdef NOAHMP_ACC_COLUMNS
+       RadLwEmitSfc = 1.0e-6
+#else
        write(*,*) "emitted longwave <0; skin T may be wrong due to inconsistent"
        write(*,*) "input of VegFracGreen with LeafAreaIndex"
        write(*,*) "VegFrac = ", VegFrac, "VegAreaIndEff = ", VegAreaIndEff, &
                   "TemperatureCanopy = ", TemperatureCanopy, "TemperatureGrd = ", TemperatureGrd
        write(*,*) "RadLwDownRefHeight = ", RadLwDownRefHeight, "RadLwNetSfc = ", RadLwNetSfc, "SnowDepth = ", SnowDepth
        stop "Error: Longwave radiation budget problem in NoahMP LSM"
+#endif
     endif
 
     ! radiative temperature: subtract from the emitted IR the
@@ -300,7 +310,8 @@ contains
     ! considering the IR originating/emitted in the canopy/ground system.
     ! Old TemperatureRadSfc calculation not taking into account Emissivity:
     ! TemperatureRadSfc = (RadLwEmitSfc/ConstStefanBoltzmann)**0.25
-    TemperatureRadSfc = ((RadLwEmitSfc - (1.0-EmissivitySfc)*RadLwDownRefHeight) / (EmissivitySfc*ConstStefanBoltzmann))**0.25
+    TemperatureRadSfc = sqrt(sqrt((RadLwEmitSfc - (1.0-EmissivitySfc)*RadLwDownRefHeight) / &
+                                  (EmissivitySfc*ConstStefanBoltzmann)))
 
     ! other photosynthesis related quantities for biochem process
     RadPhotoActAbsCan = RadPhotoActAbsSunlit * LeafAreaIndSunlit + RadPhotoActAbsShade * LeafAreaIndShade

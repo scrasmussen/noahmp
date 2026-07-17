@@ -5,6 +5,9 @@ module RunoffSurfaceFreeDrainMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf
+#endif
   use SoilHydraulicPropertyMod, only : SoilDiffusivityConductivityOpt2
 
   implicit none
@@ -12,6 +15,9 @@ module RunoffSurfaceFreeDrainMod
 contains
 
   subroutine RunoffSurfaceFreeDrain(noahmp, TimeStep)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: INFIL
@@ -27,7 +33,7 @@ contains
 
 ! local variable
     integer                :: IndSoilFrz                                   ! number of interaction
-    integer                :: LoopInd1, LoopInd2,  LoopInd3                ! do-loop index
+    integer                :: LoopInd1, LoopInd2, LoopInd3, LoopInd4       ! do-loop index
     integer, parameter     :: FrzSoilFac = 3                               ! frozen soil pre-factor
     real(kind=kind_noahmp) :: FracVoidRem                                  ! remaining fraction
     real(kind=kind_noahmp) :: SoilWatHoldMaxRem                            ! remaining accumulated maximum holdable soil water [m]
@@ -42,7 +48,12 @@ contains
     real(kind=kind_noahmp) :: SoilWatConductivity                          ! soil water conductivity [m/s]
     real(kind=kind_noahmp) :: SoilWatHoldCap                               ! soil moisture holding capacity [m3/m3]
     real(kind=kind_noahmp) :: InfilRateMax                                 ! maximum infiltration rate [m/s]
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatMaxHold    ! maximum soil water that can hold [m]
+    real(kind=kind_noahmp) :: SoilIceCoeffPow                              ! integer power of soil ice coefficient
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWatMaxHold    ! maximum soil water that can hold [m]
+#else
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatMaxHold              ! maximum soil water that can hold [m]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                               &
@@ -63,7 +74,9 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialize
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(SoilWatMaxHold)) allocate(SoilWatMaxHold(1:NumSoilLayer))
+#endif
     SoilWatMaxHold(1:NumSoilLayer) = 0.0
 
     ! start infiltration for free drainage scheme
@@ -100,7 +113,11 @@ contains
              do LoopInd2 = LoopInd1+1, IndSoilFrz
                 LoopInd3 = LoopInd3 * LoopInd2
              enddo
-             IndAcc = IndAcc + (SoilIceCoeff ** (FrzSoilFac-LoopInd1)) / float(LoopInd3)
+             SoilIceCoeffPow = 1.0
+             do LoopInd4 = 1, FrzSoilFac-LoopInd1
+                SoilIceCoeffPow = SoilIceCoeffPow * SoilIceCoeff
+             enddo
+             IndAcc = IndAcc + SoilIceCoeffPow / float(LoopInd3)
           enddo
           SoilImpervFrac = 1.0 - exp(-SoilIceCoeff) * IndAcc
        endif
@@ -123,7 +140,9 @@ contains
     endif ! SoilSfcInflowMean > 0.0
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(SoilWatMaxHold)
+#endif
 
     end associate
 

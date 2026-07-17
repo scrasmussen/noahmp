@@ -5,12 +5,18 @@ module AtmosForcingMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf
+#endif
 
   implicit none
 
 contains
 
   subroutine ProcessAtmosForcing(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: ATM
@@ -69,8 +75,7 @@ contains
 ! ------------------------------------------------------------------------
 
     ! surface air variables
-    TemperaturePotRefHeight = TemperatureAirRefHeight * &
-                              (PressureAirRefHeight / PressureAirRefHeight) ** (ConstGasDryAir / ConstHeatCapacAir) 
+    TemperaturePotRefHeight = TemperatureAirRefHeight
     PressureVaporRefHeight  = SpecHumidityRefHeight * PressureAirRefHeight / (0.622 + 0.378*SpecHumidityRefHeight)
     DensityAirRefHeight     = (PressureAirRefHeight - 0.378*PressureVaporRefHeight) / &
                               (ConstGasDryAir * TemperatureAirRefHeight)
@@ -173,7 +178,8 @@ contains
     SnowfallRefHeight = PrecipTotRefHeight * FrozenPrecipFrac
 
     ! wind speed at reference height for turbulence calculation
-    WindSpdRefHeight = max(sqrt(WindEastwardRefHeight**2.0 + WindNorthwardRefHeight**2.0), 1.0)
+    WindSpdRefHeight = max(sqrt(WindEastwardRefHeight*WindEastwardRefHeight + &
+                                WindNorthwardRefHeight*WindNorthwardRefHeight), 1.0)
 
     end associate
 

@@ -9,6 +9,7 @@ module ConfigVarType
 ! -------------------------------------------------------------------------
 
   use Machine
+  use ConstantDefineMod
 
   implicit none
   save
@@ -163,11 +164,19 @@ module ConfigVarType
     real(kind=kind_noahmp) :: Latitude                    ! latitude [degree]
     real(kind=kind_noahmp) :: DepthSoilTempBottom         ! depth [m, negative] from soil surface for lower boundary soil temperature forcing
 
+#ifdef NOAHMP_ACC_COLUMNS
+    integer               , dimension(1:NoahmpAccMaxSoilLayer) :: SoilType          ! soil type for each soil layer
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: DepthSoilLayer    ! depth [m] of layer-bottom from soil surface
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: ThicknessSnowSoilLayer ! snow and soil layer thickness [m]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: DepthSnowSoilLayer ! snow and soil layer-bottom depth [m]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: ThicknessSoilLayer ! soil layer thickness [m]
+#else
     integer               , allocatable, dimension(:) :: SoilType                  ! soil type for each soil layer
     real(kind=kind_noahmp), allocatable, dimension(:) :: DepthSoilLayer            ! depth [m] of layer-bottom from soil surface
     real(kind=kind_noahmp), allocatable, dimension(:) :: ThicknessSnowSoilLayer    ! snow and soil layer thickness [m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: DepthSnowSoilLayer        ! snow and soil layer-bottom depth [m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: ThicknessSoilLayer        ! soil layer thickness [m]
+#endif
 
   end type domain_type
 

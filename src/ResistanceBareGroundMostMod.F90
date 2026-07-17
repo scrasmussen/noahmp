@@ -6,12 +6,18 @@ module ResistanceBareGroundMostMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : log => acc_logf, atan => acc_atanf, sqrt => acc_sqrtf
+#endif
 
   implicit none
 
 contains
 
   subroutine ResistanceBareGroundMOST(noahmp, IndIter, HeatSensibleTmp, MoStabParaSgn)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SFCDIF1 for bare ground portion
@@ -74,8 +80,15 @@ contains
     MPE    = 1.0e-6
     MOZOLD = MoStabParaBare  ! M-O stability parameter for next iteration
     if ( RefHeightAboveGrd <= ZeroPlaneDispGrd ) then
+#ifdef NOAHMP_ACC_COLUMNS
+       ResistanceMomBareGrd = 1.0e6
+       ResistanceShBareGrd  = 1.0e6
+       ResistanceLhBareGrd  = 1.0e6
+       return
+#else
        write(*,*) "WARNING: critical problem: RefHeightAboveGrd <= ZeroPlaneDispGrd; model stops"
        stop "Error in ResistanceBareGroundMostMod.F90"
+#endif
     endif
 
     ! temporary drag coefficients
@@ -94,7 +107,7 @@ contains
        TVIR = (1.0 + 0.61*SpecHumidityRefHeight) * TemperatureAirRefHeight
        TMP1 = ConstVonKarman * (ConstGravityAcc/TVIR) * HeatSensibleTmp / (DensityAirRefHeight*ConstHeatCapacAir)
        if ( abs(TMP1) <= MPE ) TMP1 = MPE
-       MoLengthBare     = -1.0 * FrictionVelBare**3 / TMP1
+       MoLengthBare     = -1.0 * FrictionVelBare*FrictionVelBare*FrictionVelBare / TMP1
        MoStabParaBare   = min((RefHeightAboveGrd - ZeroPlaneDispGrd) / MoLengthBare, 1.0)
        MoStabParaBare2m = min((2.0 + RoughLenShBareGrd) / MoLengthBare, 1.0)
     endif
@@ -112,13 +125,13 @@ contains
 
     ! evaluate stability-dependent variables using moz from prior iteration
     if ( MoStabParaBare < 0.0 ) then
-       TMP1   = (1.0 - 16.0 * MoStabParaBare)**0.25
+       TMP1   = sqrt(sqrt(1.0 - 16.0 * MoStabParaBare))
        TMP2   = log((1.0 + TMP1*TMP1) / 2.0)
        TMP3   = log((1.0 + TMP1) / 2.0)
        FMNEW  = 2.0 * TMP3 + TMP2 - 2.0 * atan(TMP1) + 1.5707963
        FHNEW  = 2 * TMP2
        ! 2-meter quantities
-       TMP12  = (1.0 - 16.0 * MoStabParaBare2m)**0.25
+       TMP12  = sqrt(sqrt(1.0 - 16.0 * MoStabParaBare2m))
        TMP22  = log((1.0 + TMP12*TMP12) / 2.0)
        TMP32  = log((1.0 + TMP12) / 2.0)
        FM2NEW = 2.0 * TMP32 + TMP22 - 2.0 * atan(TMP12) + 1.5707963

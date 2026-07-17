@@ -11,6 +11,9 @@ module RunoffSurfaceTopModelGrdMod
 contains
 
   subroutine RunoffSurfaceTopModelGrd(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Originally embeded in SOILWATER subroutine instead of as a separate subroutine

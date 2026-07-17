@@ -13,6 +13,9 @@ module GroundThermalPropertyMod
 contains
 
   subroutine GroundThermalProperty(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: THERMOPROP

@@ -11,6 +11,9 @@ module PrecipitationHeatAdvectMod
 contains
 
   subroutine PrecipitationHeatAdvect(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: PRECIP_HEAT

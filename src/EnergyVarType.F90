@@ -9,6 +9,7 @@ module EnergyVarType
 ! -------------------------------------------------------------------------
 
   use Machine
+  use ConstantDefineMod
 
   implicit none
   save
@@ -55,6 +56,21 @@ module EnergyVarType
     real(kind=kind_noahmp) :: RadLwNetVegGrd              ! vegetated ground net longwave radiation [W/m2] (+ to atm)
     real(kind=kind_noahmp) :: RadLwNetBareGrd             ! bare ground net longwave rad [W/m2] (+ to atm)
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwAbsVegDir        ! solar flux absorbed by veg per unit direct flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwAbsVegDif        ! solar flux absorbed by veg per unit diffuse flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDirTranGrdDir    ! transmitted direct flux below veg per unit direct flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDirTranGrdDif    ! transmitted direct flux below veg per unit diffuse flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDifTranGrdDir    ! transmitted diffuse flux below veg per unit direct flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDifTranGrdDif    ! transmitted diffuse flux below veg per unit diffuse flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwReflVegDir       ! solar flux reflected by veg layer per unit direct flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwReflVegDif       ! solar flux reflected by veg layer per unit diffuse flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwReflGrdDir       ! solar flux reflected by ground per unit direct flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwReflGrdDif       ! solar flux reflected by ground per unit diffuse flux
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDownDir          ! incoming direct solar radiation [W/m2]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: RadSwDownDif          ! incoming diffuse solar radiation [W/m2]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: RadSwPenetrateGrd     ! light penetrating through soil/snow water [W/m2]
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwAbsVegDir        ! solar flux absorbed by veg per unit direct flux
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwAbsVegDif        ! solar flux absorbed by veg per unit diffuse flux
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwDirTranGrdDir    ! transmitted direct flux below veg per unit direct flux
@@ -68,6 +84,7 @@ module EnergyVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwDownDir          ! incoming direct solar radiation [W/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwDownDif          ! incoming diffuse solar radiation [W/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwPenetrateGrd     ! light penetrating through soil/snow water [W/m2]
+#endif
 
   end type flux_type
 
@@ -206,6 +223,28 @@ module EnergyVarType
     real(kind=kind_noahmp) :: EnergyBalanceError          ! error in surface energy balance [W/m2]
     real(kind=kind_noahmp) :: RadSwBalanceError           ! error in shortwave radiation balance [W/m2]
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: TemperatureSoilSnow   ! snow and soil layer temperature [K]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: HeatCapacVolSnow      ! snow layer volumetric specific heat capacity [J/m3/K]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: ThermConductSnow      ! snow layer thermal conductivity [W/m/K]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: HeatCapacVolSoil      ! soil layer volumetric specific heat capacity [J/m3/K]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: ThermConductSoil      ! soil layer thermal conductivity [W/m/K]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: HeatCapacGlaIce       ! glacier ice layer volumetric specific heat [J/m3/K]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: ThermConductGlaIce    ! glacier ice thermal conductivity [W/m/K]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: ThermConductSoilSnow  ! thermal conductivity for all soil and snow layers [W/m/K]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: HeatCapacSoilSnow     ! heat capacity for all snow and soil layers [J/m3/K]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: PhaseChgFacSoilSnow   ! energy factor for soil and snow phase change
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSnowDir         ! snow albedo for direct(1=vis, 2=nir)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSnowDif         ! snow albedo for diffuse(1=vis, 2=nir)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSoilDir         ! soil albedo (direct)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSoilDif         ! soil albedo (diffuse)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoGrdDir          ! ground albedo (direct beam: vis, nir)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoGrdDif          ! ground albedo (diffuse: vis, nir)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: ReflectanceVeg        ! leaf/stem reflectance weighted by LeafAreaIndex and StemAreaIndex
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: TransmittanceVeg      ! leaf/stem transmittance weighted by LeafAreaIndex and StemAreaIndex
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSfcDir          ! surface albedo (direct)
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSfcDif          ! surface albedo (diffuse)
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: TemperatureSoilSnow   ! snow and soil layer temperature [K]
     real(kind=kind_noahmp), allocatable, dimension(:) :: HeatCapacVolSnow      ! snow layer volumetric specific heat capacity [J/m3/K]
     real(kind=kind_noahmp), allocatable, dimension(:) :: ThermConductSnow      ! snow layer thermal conductivity [W/m/K]
@@ -226,6 +265,7 @@ module EnergyVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: TransmittanceVeg      ! leaf/stem transmittance weighted by LeafAreaIndex and StemAreaIndex
     real(kind=kind_noahmp), allocatable, dimension(:) :: AlbedoSfcDir          ! surface albedo (direct)
     real(kind=kind_noahmp), allocatable, dimension(:) :: AlbedoSfcDif          ! surface albedo (diffuse)
+#endif
 
   end type state_type
 
@@ -280,6 +320,21 @@ module EnergyVarType
     real(kind=kind_noahmp) :: VegFracAnnMax               ! annual maximum vegetation fraction
     real(kind=kind_noahmp) :: HeatCapacCanFac             ! canopy biomass heat capacity parameter [m]
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxMonth) :: LeafAreaIndexMon      ! monthly leaf area index, one-sided
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxMonth) :: StemAreaIndexMon      ! monthly stem area index, one-sided
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilQuartzFrac        ! soil quartz content
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSoilSat         ! saturated soil albedos: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoSoilDry         ! dry soil albedos: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoLakeFrz         ! albedo frozen lakes: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: ScatterCoeffSnow      ! Scattering coefficient for snow
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: ReflectanceLeaf       ! leaf reflectance: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: ReflectanceStem       ! stem reflectance: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: TransmittanceLeaf     ! leaf transmittance: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: TransmittanceStem     ! stem transmittance: 1=vis, 2=nir
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: EmissivitySoilLake    ! emissivity soil surface: 1=soil, 2=lake
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSwRadBand) :: AlbedoLandIce         ! land/glacier ice albedo: 1=vis, 2=nir
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: LeafAreaIndexMon      ! monthly leaf area index, one-sided
     real(kind=kind_noahmp), allocatable, dimension(:) :: StemAreaIndexMon      ! monthly stem area index, one-sided
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilQuartzFrac        ! soil quartz content
@@ -293,6 +348,7 @@ module EnergyVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: TransmittanceStem     ! stem transmittance: 1=vis, 2=nir
     real(kind=kind_noahmp), allocatable, dimension(:) :: EmissivitySoilLake    ! emissivity soil surface: 1=soil, 2=lake
     real(kind=kind_noahmp), allocatable, dimension(:) :: AlbedoLandIce         ! land/glacier ice albedo: 1=vis, 2=nir
+#endif
 
   end type parameter_type
 

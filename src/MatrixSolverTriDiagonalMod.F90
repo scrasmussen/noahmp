@@ -11,6 +11,9 @@ module MatrixSolverTriDiagonalMod
 contains
 
   subroutine MatrixSolverTriDiagonal(P, A, B, C, D, Delta, IndTopLayer, NumSoilLayer, NumSnowLayerMax)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: ROSR12
@@ -39,8 +42,13 @@ contains
     integer               , intent(in) :: IndTopLayer          ! top layer index: soil layer starts from IndTopLayer = 1
     integer               , intent(in) :: NumSoilLayer         ! number of soil layers
     integer               , intent(in) :: NumSnowLayerMax      ! maximum number of snow layers
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(:), intent(in)    :: A, B, D    ! Tri-diagonal matrix elements
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: C,P,Delta  ! Tri-diagonal matrix elements
+#else
     real(kind=kind_noahmp), dimension(-NumSnowLayerMax+1:NumSoilLayer), intent(in)    :: A, B, D    ! Tri-diagonal matrix elements
     real(kind=kind_noahmp), dimension(-NumSnowLayerMax+1:NumSoilLayer), intent(inout) :: C,P,Delta  ! Tri-diagonal matrix elements
+#endif
 
 ! local variables
     integer  :: K, KK   ! loop indices

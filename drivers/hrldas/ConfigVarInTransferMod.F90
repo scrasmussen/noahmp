@@ -95,6 +95,7 @@ contains
 
     ! the following initialization cannot be done in ConfigVarInitMod
     ! because the NumSoilLayer and NumSnowLayerMax are initialized with input values in this module
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%config%domain%DepthSoilLayer) )          &
        allocate( noahmp%config%domain%DepthSoilLayer(1:NumSoilLayer) )
     if ( .not. allocated(noahmp%config%domain%ThicknessSoilLayer) )      &
@@ -105,6 +106,7 @@ contains
        allocate( noahmp%config%domain%ThicknessSnowSoilLayer(-NumSnowLayerMax+1:NumSoilLayer) )
     if ( .not. allocated(noahmp%config%domain%DepthSnowSoilLayer) )      &
        allocate( noahmp%config%domain%DepthSnowSoilLayer(-NumSnowLayerMax+1:NumSoilLayer) )
+#endif
     
     noahmp%config%domain%SoilType              (:)   = undefined_int
     noahmp%config%domain%DepthSoilLayer        (:)   = undefined_real

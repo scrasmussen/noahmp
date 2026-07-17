@@ -17,6 +17,9 @@ module WaterMainMod
 contains
 
   subroutine WaterMain(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: WATER
@@ -168,12 +171,14 @@ contains
     ! start soil water processes
     if ( FlagSoilProcess .eqv. .true. ) then
 
+#ifndef NOAHMP_ACC_COLUMNS
        ! irrigation: call flood irrigation and add to SoilSfcInflowAcc
        if ( (FlagCropland .eqv. .true.) .and. (IrrigationAmtFlood > 0.0) ) call IrrigationFlood(noahmp)
 
        ! irrigation: call micro irrigation assuming we implement drip in first layer
        ! of the Noah-MP. Change layer 1 moisture wrt to MI rate
        if ( (FlagCropland .eqv. .true.) .and. (IrrigationAmtMicro > 0.0) ) call IrrigationMicro(noahmp)
+#endif
 
        ! compute mean water flux during soil timestep
        SoilSfcInflowMean     = SoilSfcInflowAcc / NumSoilTimeStep

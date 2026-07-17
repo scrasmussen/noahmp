@@ -13,6 +13,9 @@ module ResistanceBareGroundChen97Mod
 contains
 
   subroutine ResistanceBareGroundChen97(noahmp, IndIter)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SFCDIF2 for bare ground portion

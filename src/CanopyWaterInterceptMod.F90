@@ -6,12 +6,18 @@ module CanopyWaterInterceptMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine CanopyWaterIntercept(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: PRECIP_HEAT
@@ -111,7 +117,8 @@ contains
                                   (1.0-exp(-SnowfallRefHeight*MainTimeStep/CanopyIceMax)) )
        InterceptCanopySnow = max( InterceptCanopySnow, 0.0 )
        IceDripFacTemp      = max( 0.0, (TemperatureCanopy - 270.15) / 1.87e5 )
-       IceDripFacWind      = sqrt(WindEastwardRefHeight**2.0 + WindNorthwardRefHeight**2.0) / 1.56e5
+       IceDripFacWind      = sqrt(WindEastwardRefHeight*WindEastwardRefHeight + &
+                                   WindNorthwardRefHeight*WindNorthwardRefHeight) / 1.56e5
        ! MB: changed below to reflect the rain assumption that all precip gets intercepted
        CanopySnowDrip      = max( 0.0, CanopyIce ) * (IceDripFacWind + IceDripFacTemp)
 #ifndef NOAHMP_LEGACY_PHYSICS
@@ -140,7 +147,7 @@ contains
     else
        CanopyWetFrac  = max( 0.0, CanopyLiqWater ) / max( CanopyLiqWaterMax, 1.0e-06 )
     endif
-    CanopyWetFrac     = min( CanopyWetFrac, 1.0 ) ** 0.667
+    CanopyWetFrac     = pow(min(CanopyWetFrac, 1.0), 0.667)
 
     ! total canopy water
     CanopyTotalWater  = CanopyLiqWater + CanopyIce

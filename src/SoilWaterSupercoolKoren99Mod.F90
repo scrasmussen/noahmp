@@ -12,6 +12,9 @@ module SoilWaterSupercoolKoren99Mod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : log => acc_logf, pow => acc_powf
+#endif
 
   implicit none
 
@@ -19,6 +22,9 @@ contains
 
   subroutine SoilWaterSupercoolKoren99(noahmp, IndSoil, SoilWatSupercool, &
                                        SoilTemperature, SoilMoisture, SoilLiqWater)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: FRH2O
@@ -84,7 +90,8 @@ contains
           if ( .not. ((NumIter < 10) .and. (IndCnt == 0)) ) goto 1002
           NumIter    = NumIter +1
           DF         = log((SoilMatPotentialSat(IndSoil)*ConstGravityAcc/ConstLatHeatFusion) * &
-                       ((1.0 + CK*SoilIce)**2.0) * (SoilMoistureSat(IndSoil)/(SoilMoisture - SoilIce))**SoilExpB) - &
+                       ((1.0 + CK*SoilIce)*(1.0 + CK*SoilIce)) * &
+                       pow(SoilMoistureSat(IndSoil)/(SoilMoisture - SoilIce), SoilExpB)) - &
                        log(-(SoilTemperature - ConstFreezePoint) / SoilTemperature)
           Denom      = 2.0 * CK / (1.0 + CK * SoilIce) + SoilExpB / (SoilMoisture - SoilIce)
           SoilIceTmp = SoilIce - DF / Denom
@@ -110,9 +117,12 @@ contains
        ! in Koren et al. 1999 JGR Eqn. 17
        ! apply physical bounds to Flerchinger solution
        if ( IndCnt == 0 ) then
+#ifndef NOAHMP_ACC_COLUMNS
           print*, 'Flerchinger used in NEW version. Iterations=', NumIter
-          FlerFac = (((ConstLatHeatFusion / (ConstGravityAcc * (-SoilMatPotentialSat(IndSoil)))) * &
-                    ((SoilTemperature-ConstFreezePoint) / SoilTemperature))**(-1.0/SoilExpB)) * SoilMoistureSat(IndSoil)
+#endif
+          FlerFac = pow((ConstLatHeatFusion / (ConstGravityAcc * (-SoilMatPotentialSat(IndSoil)))) * &
+                    ((SoilTemperature-ConstFreezePoint) / SoilTemperature), -1.0/SoilExpB) * &
+                    SoilMoistureSat(IndSoil)
           if ( FlerFac < 0.02 ) FlerFac = 0.02
           SoilWatSupercool = min(FlerFac, SoilMoisture)
        endif

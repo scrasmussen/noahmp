@@ -7,12 +7,18 @@ module ResistanceGroundEvaporationMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine ResistanceGroundEvaporation(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: None (embedded in ENERGY subroutine)
@@ -61,10 +67,12 @@ contains
     else                                 ! soil point
        ! Sakaguchi and Zeng, 2009
        if ( (OptGroundResistanceEvap == 1) .or. (OptGroundResistanceEvap == 4) ) then
-          DrySoilThickness  = (-DepthSoilLayer(1)) * (exp((1.0 - min(1.0,SoilLiqWater(1)/SoilMoistureSat(1))) ** &
-                                                      ResistanceSoilExp) - 1.0) / (2.71828-1.0)
+          DrySoilThickness  = (-DepthSoilLayer(1)) * &
+                              (exp(pow(1.0 - min(1.0, SoilLiqWater(1)/SoilMoistureSat(1)), &
+                                       ResistanceSoilExp)) - 1.0) / (2.71828-1.0)
           VapDiffuseRed     = 2.2e-5 * SoilMoistureSat(1) * SoilMoistureSat(1) * &
-                              (1.0 - SoilMoistureWilt(1)/SoilMoistureSat(1)) ** (2.0 + 3.0/SoilExpCoeffB(1))
+                              pow(1.0 - SoilMoistureWilt(1)/SoilMoistureSat(1), &
+                                  2.0 + 3.0/SoilExpCoeffB(1))
           ResistanceGrdEvap = DrySoilThickness / VapDiffuseRed
 
        ! Sellers (1992) original
@@ -84,7 +92,7 @@ contains
        if ( (SoilLiqWater(1) < 0.01) .and. (SnowDepth == 0.0) ) ResistanceGrdEvap = 1.0e6
 
        SoilMatPotentialSfc = -SoilMatPotentialSat(1) * &
-                             (max(0.01,SoilLiqWater(1)) / SoilMoistureSat(1)) ** (-SoilExpCoeffB(1))
+                             pow(max(0.01,SoilLiqWater(1)) / SoilMoistureSat(1), -SoilExpCoeffB(1))
        RelHumidityGrd      = SnowCoverFrac + &
                              (1.0-SnowCoverFrac) * exp(SoilMatPotentialSfc*ConstGravityAcc/(ConstGasWaterVapor*TemperatureGrd))
     endif

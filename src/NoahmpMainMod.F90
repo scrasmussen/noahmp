@@ -24,6 +24,9 @@ module NoahmpMainMod
 contains
 
   subroutine NoahmpMain(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: NOAHMP_SFLX
@@ -61,7 +64,9 @@ contains
     ! Prepare for water balance check
     !--------------------------------------------------------------------- 
 
+#ifndef NOAHMP_ACC_COLUMNS
     call BalanceWaterInit(noahmp)
+#endif
 
     !---------------------------------------------------------------------
     ! Phenology
@@ -73,6 +78,7 @@ contains
     ! Irrigation prepare including trigger
     !--------------------------------------------------------------------- 
 
+#ifndef NOAHMP_ACC_COLUMNS
     call IrrigationPrepare(noahmp)
 
     !---------------------------------------------------------------------
@@ -82,6 +88,7 @@ contains
     ! call sprinkler irrigation before canopy process to have canopy interception
     if ( (FlagCropland .eqv. .true.) .and. (IrrigationAmtSprinkler > 0.0) ) &
        call IrrigationSprinkler(noahmp)
+#endif
 
     !---------------------------------------------------------------------
     ! Canopy water interception and precip heat advection
@@ -107,18 +114,27 @@ contains
     !--------------------------------------------------------------------- 
 
     ! for generic vegetation
-    if ( FlagDynamicVeg .eqv. .true. ) call BiochemNatureVegMain(noahmp)
+    if ( FlagDynamicVeg .eqv. .true. ) then
+#ifndef NOAHMP_ACC_COLUMNS
+       call BiochemNatureVegMain(noahmp)
+#endif
+    endif
    
     ! for explicit crop treatment
-    if ( (OptCropModel == 1) .and. (FlagDynamicCrop .eqv. .true.) ) &
+    if ( (OptCropModel == 1) .and. (FlagDynamicCrop .eqv. .true.) ) then
+#ifndef NOAHMP_ACC_COLUMNS
        call BiochemCropMain(noahmp)
+#endif
+    endif
 
     !---------------------------------------------------------------------
     ! Error check for energy and water balance
     !--------------------------------------------------------------------- 
 
+#ifndef NOAHMP_ACC_COLUMNS
     call BalanceWaterCheck(noahmp)
     call BalanceEnergyCheck(noahmp) 
+#endif
 
     !---------------------------------------------------------------------
     ! End of all NoahMP column processes

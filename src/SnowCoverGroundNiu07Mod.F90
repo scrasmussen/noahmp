@@ -5,12 +5,18 @@ module SnowCoverGroundNiu07Mod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : tanh => acc_tanhf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine SnowCoverGroundNiu07(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: None (embedded in ENERGY subroutine)
@@ -40,7 +46,7 @@ contains
     SnowCoverFrac = 0.0
     if ( SnowDepth > 0.0 ) then
          SnowDensBulk  = SnowWaterEquiv / SnowDepth
-         MeltFac       = (SnowDensBulk / 100.0)**SnowMeltFac
+         MeltFac       = pow(SnowDensBulk / 100.0, SnowMeltFac)
         !SnowCoverFrac = tanh( SnowDepth /(2.5 * Z0 * MeltFac))
          SnowCoverFrac = tanh( SnowDepth /(SnowCoverFac * MeltFac)) ! C.He: bring hard-coded 2.5*z0 to MPTABLE
 #ifdef NOAHMP_LEGACY_PHYSICS

@@ -6,6 +6,9 @@ module SoilWaterMainMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf
+#endif
   use RunoffSurfaceTopModelGrdMod,       only : RunoffSurfaceTopModelGrd
   use RunoffSurfaceTopModelEquiMod,      only : RunoffSurfaceTopModelEqui
   use RunoffSurfaceFreeDrainMod,         only : RunoffSurfaceFreeDrain
@@ -28,6 +31,9 @@ module SoilWaterMainMod
 contains
 
   subroutine SoilWaterMain(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SOILWATER
@@ -55,11 +61,19 @@ contains
     real(kind=kind_noahmp)            :: SoilSubsurfDef               ! accumulated subsurface deficit from negative-SH2O floor [m]
     real(kind=kind_noahmp)            :: SubDeficit                   ! per-iteration subsurface deficit [m]
     real(kind=kind_noahmp), parameter :: SoilImpPara = 4.0            ! soil impervious fraction parameter
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatRight
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatLeft1
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatLeft2
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatLeft3
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilLiqTmp
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft1     ! left-hand side term
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft2     ! left-hand side term
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft3     ! left-hand side term
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilLiqTmp   ! temporary soil liquid water [mm]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -94,11 +108,13 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(MatRight)  ) allocate(MatRight  (1:NumSoilLayer))
     if (.not. allocated(MatLeft1)  ) allocate(MatLeft1  (1:NumSoilLayer))
     if (.not. allocated(MatLeft2)  ) allocate(MatLeft2  (1:NumSoilLayer))
     if (.not. allocated(MatLeft3)  ) allocate(MatLeft3  (1:NumSoilLayer))
     if (.not. allocated(SoilLiqTmp)) allocate(SoilLiqTmp(1:NumSoilLayer))
+#endif
     MatRight         = 0.0
     MatLeft1         = 0.0
     MatLeft2         = 0.0
@@ -138,20 +154,26 @@ contains
     enddo
 
     ! subsurface runoff for runoff scheme option 2
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSubsurface == 2 ) call RunoffSubSurfaceEquiWaterTable(noahmp)
+#endif
 
     ! jref impermable surface at urban
     if ( FlagUrban .eqv. .true. ) SoilImpervFrac(1) = 0.95
 
     ! surface runoff and infiltration rate using different schemes
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSurface == 1 ) call RunoffSurfaceTopModelGrd(noahmp)
     if ( OptRunoffSurface == 2 ) call RunoffSurfaceTopModelEqui(noahmp)
+#endif
     if ( OptRunoffSurface == 3 ) call RunoffSurfaceFreeDrain(noahmp,SoilTimeStep)
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSurface == 4 ) call RunoffSurfaceBATS(noahmp)
     if ( OptRunoffSurface == 5 ) call RunoffSurfaceTopModelMMF(noahmp)
     if ( OptRunoffSurface == 6 ) call RunoffSurfaceVIC(noahmp,SoilTimeStep)
     if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,SoilTimeStep)
     if ( OptRunoffSurface == 8 ) call RunoffSurfaceDynamicVic(noahmp,SoilTimeStep,InfilSfcAcc)
+#endif
 
     ! determine iteration times  to solve soil water diffusion and moisture
     NumIterSoilWat = 3
@@ -168,9 +190,11 @@ contains
     do IndIter = 1, NumIterSoilWat
        if ( SoilSfcInflowMean > 0.0 ) then
           if ( OptRunoffSurface == 3 ) call RunoffSurfaceFreeDrain(noahmp,TimeStepFine)
+#ifndef NOAHMP_ACC_COLUMNS
           if ( OptRunoffSurface == 6 ) call RunoffSurfaceVIC(noahmp,TimeStepFine)
           if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,TimeStepFine)
           if ( OptRunoffSurface == 8 ) call RunoffSurfaceDynamicVic(noahmp,TimeStepFine,InfilSfcAcc)
+#endif
        endif
        call SoilWaterDiffusionRichards(noahmp, MatLeft1, MatLeft2, MatLeft3, MatRight)
        call SoilMoistureSolver(noahmp, TimeStepFine, MatLeft1, MatLeft2, MatLeft3, MatRight, SubDeficit)
@@ -186,14 +210,17 @@ contains
     DrainSoilBot  = DrainSoilBot * 1000.0  ! m/s -> mm/s
 
     ! compute tile drainage ! pvk
+#ifndef NOAHMP_ACC_COLUMNS
     if ( (OptTileDrainage == 1) .and. (TileDrainFrac > 0.3) .and. (OptRunoffSurface == 3) ) then
        call TileDrainageSimple(noahmp)  ! simple tile drainage
     endif
     if ( (OptTileDrainage == 2) .and. (TileDrainFrac > 0.1) .and. (OptRunoffSurface == 3) ) then
        call TileDrainageHooghoudt(noahmp)  ! Hooghoudt tile drain
     END IF
+#endif
 
     ! removal of soil water due to subsurface runoff (option 2)
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSubsurface == 2 ) then
        SoilWatConductAcc = 0.0
        do LoopInd1 = 1, NumSoilLayer
@@ -205,6 +232,7 @@ contains
           SoilLiqWater(LoopInd1) = SoilLiqWater(LoopInd1) - WaterRemove / (ThicknessSnowSoilLayer(LoopInd1)*1000.0)
        enddo
     endif
+#endif
 
     ! Limit SoilLiqTmp to be greater than or equal to watmin.
     ! Get water needed to bring SoilLiqTmp equal SoilWaterMin from lower layer.
@@ -232,7 +260,9 @@ contains
        SoilLiqTmp(LoopInd2) = SoilLiqTmp(LoopInd2) + SoilWatRem
        RunoffSubsurface     = RunoffSubsurface - SoilWatRem/SoilTimeStep
 
+#ifndef NOAHMP_ACC_COLUMNS
        if ( OptRunoffSubsurface == 5 ) RechargeGwDeepWT = RechargeGwDeepWT - SoilWatRem * 1.0e-3
+#endif
 
        do LoopInd2 = 1, NumSoilLayer
           SoilLiqWater(LoopInd2) = SoilLiqTmp(LoopInd2) / (ThicknessSnowSoilLayer(LoopInd2)*1000.0)
@@ -248,7 +278,9 @@ contains
 #endif
 
     ! compute groundwater and subsurface runoff
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSubsurface == 1 ) call RunoffSubSurfaceGroundWater(noahmp)
+#endif
 
     ! compute subsurface runoff based on drainage rate
     if ( (OptRunoffSubsurface == 3) .or. (OptRunoffSubsurface == 4) .or. (OptRunoffSubsurface == 6) .or. &
@@ -262,7 +294,9 @@ contains
     enddo
 
     ! compute subsurface runoff and shallow water table for MMF scheme
+#ifndef NOAHMP_ACC_COLUMNS
     if ( OptRunoffSubsurface == 5 ) call RunoffSubSurfaceShallowWaterMMF(noahmp)
+#endif
 
     ! accumulated water flux over soil timestep [mm]
     RunoffSurface    = RunoffSurface    * SoilTimeStep
@@ -270,11 +304,13 @@ contains
     TileDrain        = TileDrain        * SoilTimeStep
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(MatRight  )
     deallocate(MatLeft1  )
     deallocate(MatLeft2  )
     deallocate(MatLeft3  )
     deallocate(SoilLiqTmp)
+#endif
 
     end associate
 

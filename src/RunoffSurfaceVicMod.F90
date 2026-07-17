@@ -12,6 +12,9 @@ module RunoffSurfaceVicMod
 contains
 
   subroutine RunoffSurfaceVIC(noahmp, TimeStep)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: COMPUTE_VIC_SURFRUNOFF

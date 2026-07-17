@@ -11,6 +11,9 @@ module SurfaceRadiationMod
 contains
 
   subroutine SurfaceRadiation(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SURRAD
@@ -31,8 +34,13 @@ contains
     real(kind=kind_noahmp)           :: LeafAreaIndFrac                  ! leaf area fraction of canopy
     real(kind=kind_noahmp)           :: RadSwTranGrdDir                  ! transmitted solar radiation at ground: direct [W/m2]
     real(kind=kind_noahmp)           :: RadSwTranGrdDif                  ! transmitted solar radiation at ground: diffuse [W/m2]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:2) :: RadSwAbsCanDir             ! direct beam absorbed by canopy [W/m2]
+    real(kind=kind_noahmp), dimension(1:2) :: RadSwAbsCanDif             ! diffuse radiation absorbed by canopy [W/m2]
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwAbsCanDir  ! direct beam absorbed by canopy [W/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: RadSwAbsCanDif  ! diffuse radiation absorbed by canopy [W/m2]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                 &
@@ -70,8 +78,10 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(RadSwAbsCanDir)) allocate(RadSwAbsCanDir(1:NumSwRadBand))
     if (.not. allocated(RadSwAbsCanDif)) allocate(RadSwAbsCanDif(1:NumSwRadBand))
+#endif
     MinThr               = 1.0e-6
     RadSwAbsCanDir       = 0.0
     RadSwAbsCanDif       = 0.0
@@ -127,8 +137,10 @@ contains
                    RadSwReflGrdDir(2)*RadSwDownDir(2) + RadSwReflGrdDif(2)*RadSwDownDif(2)
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(RadSwAbsCanDir)
     deallocate(RadSwAbsCanDif)
+#endif
 
     end associate
 

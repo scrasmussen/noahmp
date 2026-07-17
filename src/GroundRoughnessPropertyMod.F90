@@ -11,6 +11,9 @@ module GroundRoughnessPropertyMod
 contains
 
   subroutine GroundRoughnessProperty(noahmp, FlagVegSfc)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: None (embedded in ENERGY subroutine)

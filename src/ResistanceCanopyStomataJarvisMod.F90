@@ -17,6 +17,9 @@ module ResistanceCanopyStomataJarvisMod
 contains
 
   subroutine ResistanceCanopyStomataJarvis(noahmp, IndexShade)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: CANRES

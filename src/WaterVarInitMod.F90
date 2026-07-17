@@ -76,6 +76,7 @@ contains
     noahmp%water%state%TileDrainFrac               = undefined_real
     noahmp%water%state%FrozenPrecipFrac            = undefined_real
 
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%water%state%IndexPhaseChange) )     &
        allocate( noahmp%water%state%IndexPhaseChange(-NumSnowLayerMax+1:NumSoilLayer) )
     if ( .not. allocated(noahmp%water%state%SoilSupercoolWater) )   &
@@ -116,6 +117,7 @@ contains
        allocate( noahmp%water%state%SoilTranspFac(1:NumSoilLayer) )
     if ( .not. allocated(noahmp%water%state%SoilMatPotential) )     &
        allocate( noahmp%water%state%SoilMatPotential(1:NumSoilLayer) )
+#endif
 
     noahmp%water%state%IndexPhaseChange   (:)      = undefined_int
     noahmp%water%state%SoilSupercoolWater (:)      = undefined_real
@@ -195,6 +197,7 @@ contains
     noahmp%water%flux%EvapIrriSprinkler            = 0.0
     noahmp%water%flux%TileDrain                    = 0.0
 
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%water%flux%CompactionSnowAging) )   &
        allocate( noahmp%water%flux%CompactionSnowAging(-NumSnowLayerMax+1:0) )
     if ( .not. allocated(noahmp%water%flux%CompactionSnowBurden) )  &
@@ -209,6 +212,7 @@ contains
        allocate( noahmp%water%flux%TranspWatLossSoilAcc(1:NumSoilLayer) )
     if ( .not. allocated(noahmp%water%flux%TranspWatLossSoilMean) )  &
        allocate( noahmp%water%flux%TranspWatLossSoilMean(1:NumSoilLayer) )
+#endif
 
     noahmp%water%flux%CompactionSnowAging  (:)     = undefined_real
     noahmp%water%flux%CompactionSnowBurden (:)     = undefined_real
@@ -278,6 +282,7 @@ contains
     noahmp%water%param%SnowCoverFac                = undefined_real
     noahmp%water%param%SnowCoverFracMax            = undefined_real
 
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%water%param%SoilMoistureSat) )        &
        allocate( noahmp%water%param%SoilMoistureSat(1:NumSoilLayer) )
     if ( .not. allocated(noahmp%water%param%SoilMoistureWilt) )       &
@@ -294,6 +299,7 @@ contains
        allocate( noahmp%water%param%SoilExpCoeffB(1:NumSoilLayer) )
     if ( .not. allocated(noahmp%water%param%SoilMatPotentialSat) )    &
        allocate( noahmp%water%param%SoilMatPotentialSat(1:NumSoilLayer) )
+#endif
 
     noahmp%water%param%SoilMoistureSat       (:)   = undefined_real
     noahmp%water%param%SoilMoistureWilt      (:)   = undefined_real

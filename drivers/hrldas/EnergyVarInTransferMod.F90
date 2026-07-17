@@ -129,7 +129,7 @@ contains
     noahmp%energy%param%AlbedoLakeFrz    (1:NumSwRadBand)         = NoahmpIO%ALBLAK_TABLE(1:NumSwRadBand)
     noahmp%energy%param%ScatterCoeffSnow (1:NumSwRadBand)         = NoahmpIO%OMEGAS_TABLE(1:NumSwRadBand)
 
-    do SoilLayerIndex = 1, size(SoilType)
+    do SoilLayerIndex = 1, NumSoilLayer
        noahmp%energy%param%SoilQuartzFrac(SoilLayerIndex)         = NoahmpIO%QUARTZ_TABLE(SoilType(SoilLayerIndex))
     enddo
 

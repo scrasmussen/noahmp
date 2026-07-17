@@ -6,12 +6,18 @@ module SoilWaterSupercoolNiu06Mod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine SoilWaterSupercoolNiu06(noahmp, IndSoil, SoilWatSupercool, SoilTemperature)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: embedded in PHASECHANGE
@@ -39,7 +45,8 @@ contains
 ! -----------------------------------------------------------------------------
 
     SoilWatPotFrz    = ConstLatHeatFusion * (ConstFreezePoint - SoilTemperature) / (ConstGravityAcc * SoilTemperature)
-    SoilWatSupercool = SoilMoistureSat(IndSoil) * (SoilWatPotFrz / SoilMatPotentialSat(IndSoil))**(-1.0/SoilExpCoeffB(IndSoil))
+    SoilWatSupercool = SoilMoistureSat(IndSoil) * &
+                       pow(SoilWatPotFrz / SoilMatPotentialSat(IndSoil), -1.0/SoilExpCoeffB(IndSoil))
 
     end associate
 

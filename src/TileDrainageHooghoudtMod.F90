@@ -14,6 +14,9 @@ module TileDrainageHooghoudtMod
 contains
 
   subroutine TileDrainageHooghoudt(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: TILE_HOOGHOUDT

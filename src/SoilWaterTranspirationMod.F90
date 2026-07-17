@@ -6,12 +6,18 @@ module SoilWaterTranspirationMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine SoilWaterTranspiration(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: None (embedded in ENERGY subroutine)
@@ -62,15 +68,15 @@ contains
           endif
           if ( OptSoilWaterTranspiration == 2 ) then  ! CLM
              SoilMatPotential(IndSoil) = max(SoilMatPotentialWilt, -SoilMatPotentialSat(IndSoil) * &
-                                            (max(0.01,SoilLiqWater(IndSoil))/SoilMoistureSat(IndSoil)) ** &
-                                            (-SoilExpCoeffB(IndSoil)))
+                                            pow(max(0.01,SoilLiqWater(IndSoil))/SoilMoistureSat(IndSoil), &
+                                            -SoilExpCoeffB(IndSoil)))
              SoilWetFac                = (1.0 - SoilMatPotential(IndSoil)/SoilMatPotentialWilt) / &
                                          (1.0 + SoilMatPotentialSat(IndSoil)/SoilMatPotentialWilt)
           endif
           if ( OptSoilWaterTranspiration == 3 ) then  ! SSiB
              SoilMatPotential(IndSoil) = max(SoilMatPotentialWilt, -SoilMatPotentialSat(IndSoil) * &
-                                            (max(0.01,SoilLiqWater(IndSoil))/SoilMoistureSat(IndSoil)) ** &
-                                            (-SoilExpCoeffB(IndSoil)))
+                                            pow(max(0.01,SoilLiqWater(IndSoil))/SoilMoistureSat(IndSoil), &
+                                            -SoilExpCoeffB(IndSoil)))
              SoilWetFac                = 1.0 - exp(-5.8*(log(SoilMatPotentialWilt/SoilMatPotential(IndSoil))))
           endif
           SoilWetFac                   = min(1.0, max(0.0,SoilWetFac))

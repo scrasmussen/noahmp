@@ -5,12 +5,18 @@ module SnowThermalPropertyMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine SnowThermalProperty(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: CSNOW
@@ -24,7 +30,11 @@ contains
 
 ! local variable
     integer                          :: LoopInd                        ! loop index
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowDensBulk  ! bulk density of snow [kg/m3]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowDensBulk  ! bulk density of snow [kg/m3]
+#else
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowDensBulk              ! bulk density of snow [kg/m3]
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -43,7 +53,9 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(SnowDensBulk)) allocate(SnowDensBulk(-NumSnowLayerMax+1:0))
+#endif
     SnowDensBulk = 0.0
 
     !  effective porosity of snow
@@ -64,19 +76,21 @@ contains
     ! thermal conductivity of snow
     do LoopInd = NumSnowLayerNeg+1, 0
        if (OptSnowThermConduct == 1) &
-          ThermConductSnow(LoopInd) = 3.2217e-6 * SnowDensBulk(LoopInd)**2.0                      ! Stieglitz(yen,1965)
+          ThermConductSnow(LoopInd) = 3.2217e-6 * SnowDensBulk(LoopInd)*SnowDensBulk(LoopInd)     ! Stieglitz(yen,1965)
        if (OptSnowThermConduct == 2) &
           ThermConductSnow(LoopInd) = 2e-2 + 2.5e-6*SnowDensBulk(LoopInd)*SnowDensBulk(LoopInd)   ! Anderson, 1976
        if (OptSnowThermConduct == 3) &
           ThermConductSnow(LoopInd) = 0.35                                                        ! constant
        if (OptSnowThermConduct == 4) &
-          ThermConductSnow(LoopInd) = 2.576e-6 * SnowDensBulk(LoopInd)**2.0 + 0.074               ! Verseghy (1991)
+          ThermConductSnow(LoopInd) = 2.576e-6 * SnowDensBulk(LoopInd)*SnowDensBulk(LoopInd) + 0.074 ! Verseghy (1991)
        if (OptSnowThermConduct == 5) &
-          ThermConductSnow(LoopInd) = 2.22 * (SnowDensBulk(LoopInd)/1000.0)**1.88                 ! Douvill(Yen, 1981)
+          ThermConductSnow(LoopInd) = 2.22 * pow(SnowDensBulk(LoopInd)/1000.0, 1.88)              ! Douvill(Yen, 1981)
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(SnowDensBulk)
+#endif
 
     end associate
 

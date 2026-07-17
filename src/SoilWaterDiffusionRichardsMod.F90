@@ -15,6 +15,9 @@ module SoilWaterDiffusionRichardsMod
 contains
 
   subroutine SoilWaterDiffusionRichards(noahmp, MatLeft1, MatLeft2, MatLeft3, MatRight)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: SRT
@@ -26,21 +29,36 @@ contains
 
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+#else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1     ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft2     ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft3     ! left-hand side term of the matrix
+#endif
 
 ! local variable
     integer                                           :: LoopInd                     ! loop index
     real(kind=kind_noahmp)                            :: DepthSnowSoilTmp            ! temporary snow/soil layer depth [m]
     real(kind=kind_noahmp)                            :: SoilMoistTmpToWT            ! temporary soil moisture between bottom of the soil and water table
     real(kind=kind_noahmp)                            :: SoilMoistBotTmp             ! temporary soil moisture below bottom to calculate flux
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: DepthSnowSoilInv
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilThickTmp
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWaterGrad
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: WaterExcess
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureTmp
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: DepthSnowSoilInv            ! inverse of snow/soil layer depth [1/m]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilThickTmp                ! temporary soil thickness
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWaterGrad               ! temporary soil moisture vertical gradient
     real(kind=kind_noahmp), allocatable, dimension(:) :: WaterExcess                 ! temporary excess water flux
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureTmp             ! temporary soil moisture
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                             &
@@ -66,11 +84,13 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(DepthSnowSoilInv)) allocate(DepthSnowSoilInv(1:NumSoilLayer))
     if (.not. allocated(SoilThickTmp)    ) allocate(SoilThickTmp    (1:NumSoilLayer))
     if (.not. allocated(SoilWaterGrad)   ) allocate(SoilWaterGrad   (1:NumSoilLayer))
     if (.not. allocated(WaterExcess)     ) allocate(WaterExcess     (1:NumSoilLayer))
     if (.not. allocated(SoilMoistureTmp) ) allocate(SoilMoistureTmp (1:NumSoilLayer))
+#endif
     MatRight(:)         = 0.0
     MatLeft1(:)         = 0.0
     MatLeft2(:)         = 0.0
@@ -167,11 +187,13 @@ contains
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(DepthSnowSoilInv)
     deallocate(SoilThickTmp    )
     deallocate(SoilWaterGrad   )
     deallocate(WaterExcess     )
     deallocate(SoilMoistureTmp )
+#endif
 
     end associate
 

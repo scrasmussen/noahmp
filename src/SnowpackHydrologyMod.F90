@@ -13,6 +13,9 @@ module SnowpackHydrologyMod
 contains
 
   subroutine SnowpackHydrology(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SNOWH2O
@@ -31,8 +34,13 @@ contains
     real(kind=kind_noahmp)           :: SnowIceTmp                    ! ice mass after minus sublimation
     real(kind=kind_noahmp)           :: SnowWaterRatio                ! ratio of SWE after frost & sublimation to original SWE
     real(kind=kind_noahmp)           :: SnowWaterTmp                  ! temporary SWE
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqVol   ! partial volume of liquid water in layer
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIceVol   ! partial volume of ice lens in layer
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowLiqVol   ! partial volume of liquid water in layer
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowIceVol   ! partial volume of ice lens in layer
+#else
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqVol               ! partial volume of liquid water in layer
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIceVol               ! partial volume of ice lens in layer
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -58,8 +66,10 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(SnowLiqVol)) allocate(SnowLiqVol(-NumSnowLayerMax+1:0))
     if (.not. allocated(SnowIceVol)) allocate(SnowIceVol(-NumSnowLayerMax+1:0))
+#endif
     SnowLiqVol(:)      = 0.0
     SnowIceVol(:)      = 0.0
     SnowEffPorosity(:) = 0.0
@@ -149,8 +159,10 @@ contains
     SnowBotOutflow = OutflowSnowLayer / MainTimeStep
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(SnowLiqVol)
     deallocate(SnowIceVol)
+#endif
 
     end associate
 

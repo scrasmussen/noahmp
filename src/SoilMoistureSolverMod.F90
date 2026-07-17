@@ -13,6 +13,9 @@ module SoilMoistureSolverMod
 contains
 
   subroutine SoilMoistureSolver(noahmp, TimeStep, MatLeft1, MatLeft2, MatLeft3, MatRight, SubDeficit)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: SSTEP
@@ -26,18 +29,30 @@ contains
     type(noahmp_type)     , intent(inout) :: noahmp
     real(kind=kind_noahmp), intent(in)    :: TimeStep                               ! timestep (may not be the same as model timestep)
     real(kind=kind_noahmp), intent(out)   :: SubDeficit                             ! per-call subsurface deficit from negative-SH2O fix [m]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+#else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight    ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1    ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft2    ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft3    ! left-hand side term of the matrix
+#endif
 
 ! local variable
     integer                                           :: LoopInd                    ! soil layer loop index
     real(kind=kind_noahmp)                            :: WatDefiTmp                 ! temporary water deficiency
     real(kind=kind_noahmp)                            :: WatMinFloor                ! per-layer WATMIN floor [m3/m3]
     real(kind=kind_noahmp)                            :: WatMinusTmp                ! water deficit below WATMIN [m]
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatRightTmp
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: MatLeft3Tmp
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRightTmp                ! temporary MatRight matrix coefficient
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft3Tmp                ! temporary MatLeft3 matrix coefficient
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                       &
@@ -59,8 +74,10 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(MatRightTmp)) allocate(MatRightTmp(1:NumSoilLayer))
     if (.not. allocated(MatLeft3Tmp)) allocate(MatLeft3Tmp(1:NumSoilLayer))
+#endif
     MatRightTmp          = 0.0
     MatLeft3Tmp          = 0.0
     SoilSaturationExcess = 0.0
@@ -164,8 +181,10 @@ contains
     SoilMoisture = SoilLiqWater + SoilIce
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(MatRightTmp)
     deallocate(MatLeft3Tmp)
+#endif
 
     end associate
 

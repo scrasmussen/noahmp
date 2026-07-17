@@ -5,12 +5,18 @@ module ResistanceCanopyStomataBallBerryMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine ResistanceCanopyStomataBallBerry(noahmp, IndexShade)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: STOMATA
@@ -55,7 +61,7 @@ contains
     real(kind=kind_noahmp)           :: F2                    ! generic temperature inhibition (statement function)
     real(kind=kind_noahmp)           :: AB                    ! used in statement functions
     real(kind=kind_noahmp)           :: BC                    ! used in statement functions
-    F1(AB, BC) = AB**( (BC - 25.0) / 10.0 )
+    F1(AB, BC) = pow(AB, (BC - 25.0) / 10.0)
     F2(AB)     = 1.0 + exp( (-2.2e05 + 710.0 * (AB + 273.16)) / (8.314 * (AB + 273.16)) )
 
 ! --------------------------------------------------------------------

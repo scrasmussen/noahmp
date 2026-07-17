@@ -5,12 +5,18 @@ module SoilThermalPropertyMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : log10 => acc_log10f, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine SoilThermalProperty(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: TDFCND
@@ -34,7 +40,11 @@ contains
     real(kind=kind_noahmp)           :: SoilSatRatio                  ! saturation ratio
     real(kind=kind_noahmp)           :: SoilWatFracSat                ! saturated soil water fraction
     real(kind=kind_noahmp)           :: SoilWatFrac                   ! soil water fraction
-    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilIceTmp   ! temporal soil ice
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilIceTmp   ! temporal soil ice
+#else
+    real(kind=kind_noahmp), allocatable, dimension(:) :: SoilIceTmp             ! temporal soil ice
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                          &
@@ -50,7 +60,9 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initiazliation
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(SoilIceTmp)) allocate(SoilIceTmp(1:NumSoilLayer))
+#endif
     SoilIceTmp(:)       = 0.0
 
     do LoopInd = 1, NumSoilLayer
@@ -66,8 +78,8 @@ contains
        SoilSatRatio = SoilMoisture(LoopInd) / SoilMoistureSat(LoopInd) ! SATURATION RATIO
 
        ! UNFROZEN FRACTION (FROM 1., i.e., 100%LIQUID, TO 0. (100% FROZEN))
-       ThermConductSolid = (ConstThermConductQuartz ** SoilQuartzFrac(LoopInd)) * &
-                           (ConstThermConductSoilOth ** (1.0 - SoilQuartzFrac(LoopInd)))
+       ThermConductSolid = pow(ConstThermConductQuartz, SoilQuartzFrac(LoopInd)) * &
+                           pow(ConstThermConductSoilOth, 1.0 - SoilQuartzFrac(LoopInd))
 
        ! UNFROZEN VOLUME FOR SATURATION (POROSITY*SoilWatFrac)
        SoilWatFrac = 1.0    ! Prevent divide by zero (suggested by D. Mocko)
@@ -75,9 +87,9 @@ contains
        SoilWatFracSat = SoilWatFrac * SoilMoistureSat(LoopInd)
 
        ! SATURATED THERMAL CONDUCTIVITY
-       ThermConductSoilSat = ThermConductSolid ** (1.0-SoilMoistureSat(LoopInd)) * &
-                             ConstThermConductIce ** (SoilMoistureSat(LoopInd)-SoilWatFracSat) * &
-                             ConstThermConductWater ** (SoilWatFracSat)
+       ThermConductSoilSat = pow(ThermConductSolid, 1.0-SoilMoistureSat(LoopInd)) * &
+                             pow(ConstThermConductIce, SoilMoistureSat(LoopInd)-SoilWatFracSat) * &
+                             pow(ConstThermConductWater, SoilWatFracSat)
 
        ! DRY THERMAL CONDUCTIVITY IN W.M-1.K-1
        SoilGamFac          = (1.0 - SoilMoistureSat(LoopInd)) * 2700.0
@@ -103,7 +115,9 @@ contains
     enddo ! LoopInd
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(SoilIceTmp)
+#endif
 
     end associate
 

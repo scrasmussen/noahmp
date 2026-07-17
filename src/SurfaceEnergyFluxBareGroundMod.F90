@@ -8,6 +8,9 @@ module SurfaceEnergyFluxBareGroundMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : log => acc_logf
+#endif
   use VaporPressureSaturationMod,    only : VaporPressureSaturation
   use ResistanceBareGroundMostMod,   only : ResistanceBareGroundMOST
   use ResistanceBareGroundChen97Mod, only : ResistanceBareGroundChen97
@@ -17,6 +20,9 @@ module SurfaceEnergyFluxBareGroundMod
 contains
 
   subroutine SurfaceEnergyFluxBareGround(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: BARE_FLUX
@@ -129,7 +135,9 @@ contains
 
        ! aerodyn resistances between reference heigths and d+z0v
        if ( OptSurfaceDrag == 1 ) call ResistanceBareGroundMOST(noahmp, IndIter, HeatSensibleTmp, MoStabParaSgn)
+#ifndef NOAHMP_ACC_COLUMNS
        if ( OptSurfaceDrag == 2 ) call ResistanceBareGroundChen97(noahmp, IndIter)
+#endif
 
        ! conductance variables for diagnostics         
        ExchCoeffMomTmp = 1.0 / ResistanceMomBareGrd
@@ -149,15 +157,18 @@ contains
        ! ground fluxes and temperature change
        ShCoeff             = DensityAirRefHeight * ConstHeatCapacAir / ResistanceShBareGrd
        LhCoeff             = DensityAirRefHeight * ConstHeatCapacAir / PsychConstGrd / (ResistanceGrdEvap+ResistanceLhBareGrd)
-       RadLwNetBareGrd     = LwRadCoeff * TemperatureGrdBare**4 - EmissivityGrd * RadLwDownRefHeight
+       RadLwNetBareGrd     = LwRadCoeff * TemperatureGrdBare*TemperatureGrdBare*TemperatureGrdBare*TemperatureGrdBare - &
+                              EmissivityGrd * RadLwDownRefHeight
        HeatSensibleBareGrd = ShCoeff * (TemperatureGrdBare - TemperatureAirRefHeight)
        HeatLatentBareGrd   = LhCoeff * (VapPresSatGrdBare*RelHumidityGrd - PressureVaporRefHeight)
        HeatGroundBareGrd   = GrdHeatCoeff * (TemperatureGrdBare - TemperatureSoilSnow(NumSnowLayerNeg+1))
        EnergyResTmp        = RadSwAbsGrd - RadLwNetBareGrd - HeatSensibleBareGrd - HeatLatentBareGrd - &
                              HeatGroundBareGrd + HeatPrecipAdvBareGrd
-       FluxTotCoeff        = 4.0*LwRadCoeff*TemperatureGrdBare**3 + ShCoeff + LhCoeff*VapPresSatGrdBareTempD + GrdHeatCoeff
+       FluxTotCoeff        = 4.0*LwRadCoeff*TemperatureGrdBare*TemperatureGrdBare*TemperatureGrdBare + ShCoeff + &
+                              LhCoeff*VapPresSatGrdBareTempD + GrdHeatCoeff
        TemperatureGrdChg   = EnergyResTmp / FluxTotCoeff
-       RadLwNetBareGrd     = RadLwNetBareGrd + 4.0 * LwRadCoeff * TemperatureGrdBare**3 * TemperatureGrdChg
+       RadLwNetBareGrd     = RadLwNetBareGrd + 4.0 * LwRadCoeff * TemperatureGrdBare*TemperatureGrdBare* &
+                              TemperatureGrdBare * TemperatureGrdChg
        HeatSensibleBareGrd = HeatSensibleBareGrd + ShCoeff * TemperatureGrdChg
        HeatLatentBareGrd   = HeatLatentBareGrd + LhCoeff * VapPresSatGrdBareTempD * TemperatureGrdChg
        HeatGroundBareGrd   = HeatGroundBareGrd + GrdHeatCoeff * TemperatureGrdChg
@@ -188,7 +199,8 @@ contains
           if ( OptSnowSoilTempTime == 3 ) &
              TemperatureGrdBare = (1.0-SnowCoverFrac) * TemperatureGrdBare + SnowCoverFrac * ConstFreezePoint  ! MB: allow TemperatureGrd>0C during melt v3.7
 
-          RadLwNetBareGrd     = LwRadCoeff * TemperatureGrdBare**4 - EmissivityGrd * RadLwDownRefHeight
+          RadLwNetBareGrd     = LwRadCoeff * TemperatureGrdBare*TemperatureGrdBare*TemperatureGrdBare*TemperatureGrdBare - &
+                                 EmissivityGrd * RadLwDownRefHeight
           HeatSensibleBareGrd = ShCoeff * (TemperatureGrdBare - TemperatureAirRefHeight)
           HeatLatentBareGrd   = LhCoeff * (VapPresSatGrdBare*RelHumidityGrd - PressureVaporRefHeight)
           HeatGroundBareGrd   = RadSwAbsGrd + HeatPrecipAdvBareGrd - &

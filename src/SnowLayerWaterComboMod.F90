@@ -11,6 +11,9 @@ contains
 
   subroutine SnowLayerWaterCombo(ThickLayer1, LiqLayer1, IceLayer1, TempLayer1, &
                                  ThickLayer2, LiqLayer2, IceLayer2, TempLayer2)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: COMBO

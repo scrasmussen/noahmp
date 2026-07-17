@@ -9,6 +9,7 @@ module WaterVarType
 ! -------------------------------------------------------------------------
 
   use Machine
+  use ConstantDefineMod
 
   implicit none
   save
@@ -73,6 +74,15 @@ module WaterVarType
     real(kind=kind_noahmp) :: EvapSoilSfcLiqMean         ! mean soil surface water evaporation during soil timestep [m/s]
     real(kind=kind_noahmp) :: SoilSfcInflowMean          ! mean water input on soil surface during soil timestep [m/s]
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: TranspWatLossSoil     ! transpiration water loss from soil layers [m/s]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: TranspWatLossSoilAcc  ! accumulated transpiration water loss from soil per soil timestep [m/s * dt_soil/dt_main]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: TranspWatLossSoilMean ! mean transpiration water loss from soil during soil timestep [m/s]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: CompactionSnowAging   ! rate of snow compaction due to destructive metamorphism/aging [1/s]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: CompactionSnowBurden  ! rate of snow compaction due to overburden [1/s]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: CompactionSnowMelt    ! rate of snow compaction due to melt [1/s]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: CompactionSnowTot     ! rate of total snow compaction [fraction/timestep]
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: TranspWatLossSoil     ! transpiration water loss from soil layers [m/s]
     real(kind=kind_noahmp), allocatable, dimension(:) :: TranspWatLossSoilAcc  ! accumulated transpiration water loss from soil per soil timestep [m/s * dt_soil/dt_main]
     real(kind=kind_noahmp), allocatable, dimension(:) :: TranspWatLossSoilMean ! mean transpiration water loss from soil during soil timestep [m/s]
@@ -80,6 +90,7 @@ module WaterVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: CompactionSnowBurden  ! rate of snow compaction due to overburden [1/s]
     real(kind=kind_noahmp), allocatable, dimension(:) :: CompactionSnowMelt    ! rate of snow compaction due to melt [1/s]
     real(kind=kind_noahmp), allocatable, dimension(:) :: CompactionSnowTot     ! rate of total snow compaction [fraction/timestep]
+#endif
 
   end type flux_type
 
@@ -135,6 +146,28 @@ module WaterVarType
     real(kind=kind_noahmp) :: WaterBalanceError          ! water balance error [mm]
     real(kind=kind_noahmp) :: WaterStorageTotEnd         ! total water storage [mm] at the end of NoahMP process
 
+#ifdef NOAHMP_ACC_COLUMNS
+    integer               , dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: IndexPhaseChange      ! phase change index (0-none;1-melt;2-refreeze)
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: SnowIce               ! snow layer ice [mm]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: SnowLiqWater          ! snow layer liquid water [mm]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowIceFracPrev       ! ice fraction in snow layers at previous timestep
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowIceFrac           ! ice fraction in snow layers at current timestep
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilIceFrac           ! ice fraction in soil layers at current timestep
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowEffPorosity       ! snow effective porosity [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilLiqWater          ! soil liquid moisture [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilIce               ! soil ice moisture [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoisture          ! total soil moisture [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilImpervFrac        ! fraction of imperviousness due to frozen soil
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWatConductivity   ! soil hydraulic/water conductivity [m/s]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWatDiffusivity    ! soil water diffusivity [m2/s]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilEffPorosity       ! soil effective porosity [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureEqui      ! equilibrium soil water  content [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilTranspFac         ! soil water transpiration factor (0 to 1)
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowIceVol            ! partial volume of snow ice [m3/m3]
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:0) :: SnowLiqWaterVol       ! partial volume of snow liquid water [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilSupercoolWater    ! supercooled water in soil [kg/m2]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMatPotential      ! soil matric potential [m]
+#else
     integer               , allocatable, dimension(:) :: IndexPhaseChange      ! phase change index (0-none;1-melt;2-refreeze)
     real(kind=kind_noahmp), allocatable, dimension(:) :: SnowIce               ! snow layer ice [mm]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqWater          ! snow layer liquid water [mm]
@@ -155,6 +188,7 @@ module WaterVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: SnowLiqWaterVol       ! partial volume of snow liquid water [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilSupercoolWater    ! supercooled water in soil [kg/m2]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMatPotential      ! soil matric potential [m]
+#endif
 
   end type state_type
 
@@ -221,6 +255,16 @@ module WaterVarType
     real(kind=kind_noahmp) :: SnowCoverFac               ! snow cover factor [m] (originally hard-coded 2.5*z0 in SCF formulation)
     real(kind=kind_noahmp) :: SnowCoverFracMax           ! max fractional snow covered area (legacy SCAMAX); only used when NOAHMP_LEGACY_PHYSICS is on
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureSat        ! saturated value of soil moisture [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureWilt       ! wilting point soil moisture [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureFieldCap   ! reference soil moisture (field capacity) [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMoistureDry        ! dry soil moisture threshold [m3/m3]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWatDiffusivitySat  ! saturated soil hydraulic diffusivity [m2/s]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilWatConductivitySat ! saturated soil hydraulic conductivity [m/s]
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilExpCoeffB          ! soil exponent B paramete
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer) :: SoilMatPotentialSat    ! saturated soil matric potential [m]
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureSat        ! saturated value of soil moisture [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureWilt       ! wilting point soil moisture [m3/m3]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMoistureFieldCap   ! reference soil moisture (field capacity) [m3/m3]
@@ -229,6 +273,7 @@ module WaterVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatConductivitySat ! saturated soil hydraulic conductivity [m/s]
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilExpCoeffB          ! soil exponent B paramete
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilMatPotentialSat    ! saturated soil matric potential [m]
+#endif
 
   end type parameter_type
 

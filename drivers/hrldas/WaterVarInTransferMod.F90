@@ -147,7 +147,7 @@ contains
     noahmp%water%param%NumSoilLayerRoot                   = NoahmpIO%NROOT_TABLE(VegType)
     noahmp%water%param%SoilDrainSlope                     = NoahmpIO%SLOPE_TABLE(RunoffSlopeType)
 
-    do IndexSoilLayer = 1, size(SoilType)
+    do IndexSoilLayer = 1, NumSoilLayer
        noahmp%water%param%SoilMoistureSat       (IndexSoilLayer) = NoahmpIO%SMCMAX_TABLE(SoilType(IndexSoilLayer))
        noahmp%water%param%SoilMoistureWilt      (IndexSoilLayer) = NoahmpIO%SMCWLT_TABLE(SoilType(IndexSoilLayer))
        noahmp%water%param%SoilMoistureFieldCap  (IndexSoilLayer) = NoahmpIO%SMCREF_TABLE(SoilType(IndexSoilLayer))
@@ -161,14 +161,14 @@ contains
     ! spatial varying soil texture and properties directly from input
     if ( noahmp%config%nmlist%OptSoilProperty == 4 ) then
        ! 3D soil properties
-       noahmp%water%param%SoilExpCoeffB          = NoahmpIO%BEXP_3D  (I,1:NumSoilLayer,J) ! C-H B exponent
-       noahmp%water%param%SoilMoistureDry        = NoahmpIO%SMCDRY_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Dry
-       noahmp%water%param%SoilMoistureWilt       = NoahmpIO%SMCWLT_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Wilt
-       noahmp%water%param%SoilMoistureFieldCap   = NoahmpIO%SMCREF_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Reference
-       noahmp%water%param%SoilMoistureSat        = NoahmpIO%SMCMAX_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Max
-       noahmp%water%param%SoilWatConductivitySat = NoahmpIO%DKSAT_3D (I,1:NumSoilLayer,J) ! Saturated Soil Conductivity
-       noahmp%water%param%SoilWatDiffusivitySat  = NoahmpIO%DWSAT_3D (I,1:NumSoilLayer,J) ! Saturated Soil Diffusivity
-       noahmp%water%param%SoilMatPotentialSat    = NoahmpIO%PSISAT_3D(I,1:NumSoilLayer,J) ! Saturated Matric Potential
+       noahmp%water%param%SoilExpCoeffB(1:NumSoilLayer)          = NoahmpIO%BEXP_3D  (I,1:NumSoilLayer,J) ! C-H B exponent
+       noahmp%water%param%SoilMoistureDry(1:NumSoilLayer)        = NoahmpIO%SMCDRY_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Dry
+       noahmp%water%param%SoilMoistureWilt(1:NumSoilLayer)       = NoahmpIO%SMCWLT_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Wilt
+       noahmp%water%param%SoilMoistureFieldCap(1:NumSoilLayer)   = NoahmpIO%SMCREF_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Reference
+       noahmp%water%param%SoilMoistureSat(1:NumSoilLayer)        = NoahmpIO%SMCMAX_3D(I,1:NumSoilLayer,J) ! Soil Moisture Limit: Max
+       noahmp%water%param%SoilWatConductivitySat(1:NumSoilLayer) = NoahmpIO%DKSAT_3D (I,1:NumSoilLayer,J) ! Saturated Soil Conductivity
+       noahmp%water%param%SoilWatDiffusivitySat(1:NumSoilLayer)  = NoahmpIO%DWSAT_3D (I,1:NumSoilLayer,J) ! Saturated Soil Diffusivity
+       noahmp%water%param%SoilMatPotentialSat(1:NumSoilLayer)    = NoahmpIO%PSISAT_3D(I,1:NumSoilLayer,J) ! Saturated Matric Potential
        noahmp%water%param%SoilConductivityRef    = NoahmpIO%REFDK_2D (I,J)                ! Reference Soil Conductivity
        noahmp%water%param%SoilInfilFacRef        = NoahmpIO%REFKDT_2D(I,J)                ! Soil Infiltration Parameter
        ! 2D additional runoff6~8 parameters

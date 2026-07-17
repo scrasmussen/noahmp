@@ -16,6 +16,9 @@ module SoilSnowTemperatureMainMod
 contains
 
   subroutine SoilSnowTemperatureMain(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: TSNOSOI
@@ -29,10 +32,17 @@ contains
     type(noahmp_type)     , intent(inout) :: noahmp
 
 ! local variable
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatRight
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatLeft1
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatLeft2
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatLeft3
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft1     ! left-hand side term
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft2     ! left-hand side term
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft3     ! left-hand side term
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                    &
@@ -49,10 +59,12 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(MatRight)) allocate(MatRight(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MatLeft1)) allocate(MatLeft1(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MatLeft2)) allocate(MatLeft2(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MatLeft3)) allocate(MatLeft3(-NumSnowLayerMax+1:NumSoilLayer))
+#endif
     MatRight(:) = 0.0
     MatLeft1(:) = 0.0
     MatLeft2(:) = 0.0
@@ -72,10 +84,12 @@ contains
     HeatFromSoilBot = HeatFromSoilBot * SoilTimeStep
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(MatRight)
     deallocate(MatLeft1)
     deallocate(MatLeft2)
     deallocate(MatLeft3)
+#endif
 
     end associate
 

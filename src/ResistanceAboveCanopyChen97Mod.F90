@@ -13,6 +13,9 @@ module ResistanceAboveCanopyChen97Mod
 contains
 
   subroutine ResistanceAboveCanopyChen97(noahmp, IterationInd)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: SFCDIF2 for vegetated portion

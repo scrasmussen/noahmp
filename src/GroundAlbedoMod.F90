@@ -5,12 +5,18 @@ module GroundAlbedoMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, pow => acc_powf
+#endif
 
   implicit none
 
 contains
 
   subroutine GroundAlbedo(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: GROUNDALB
@@ -54,7 +60,7 @@ contains
           AlbedoSoilDir(IndSwBnd) = min(AlbedoSoilSat(IndSwBnd)+AlbedoSoilAdjWet, AlbedoSoilDry(IndSwBnd))
           AlbedoSoilDif(IndSwBnd) = AlbedoSoilDir(IndSwBnd)
        elseif ( TemperatureGrd > ConstFreezePoint ) then  ! unfrozen lake, wetland
-          AlbedoSoilDir(IndSwBnd) = 0.06 / (max(0.01, CosSolarZenithAngle)**1.7+0.15)
+          AlbedoSoilDir(IndSwBnd) = 0.06 / (pow(max(0.01, CosSolarZenithAngle), 1.7)+0.15)
           AlbedoSoilDif(IndSwBnd) = 0.06
        else                                               ! frozen lake, wetland
           AlbedoSoilDir(IndSwBnd) = AlbedoLakeFrz(IndSwBnd)

@@ -36,5 +36,13 @@ module ConstantDefineMod
   real(kind=kind_noahmp), public, parameter :: ConstPI                  = 3.14159265  ! pi value
   real(kind=kind_noahmp), public, parameter :: ConstDensityGraupel      = 500.0       ! graupel bulk density [kg/m3]
   real(kind=kind_noahmp), public, parameter :: ConstDensityHail         = 917.0       ! hail bulk density [kg/m3]
+#ifdef NOAHMP_ACC_COLUMNS
+  integer, public, parameter :: NoahmpAccMaxSoilLayer = 20
+  integer, public, parameter :: NoahmpAccMaxSnowLayer = 10
+  integer, public, parameter :: NoahmpAccMaxSnowSoilLayer = NoahmpAccMaxSoilLayer + NoahmpAccMaxSnowLayer
+  integer, public, parameter :: NoahmpAccMaxSwRadBand = 2
+  integer, public, parameter :: NoahmpAccMaxMonth = 12
+  integer, public, parameter :: NoahmpAccMaxCropGrowStage = 12
+#endif
 
 end module ConstantDefineMod

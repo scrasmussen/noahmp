@@ -160,6 +160,7 @@ contains
     noahmp%energy%state%RadSwBalanceError           = undefined_real
     noahmp%energy%state%RefHeightAboveGrd           = undefined_real
  
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%energy%state%TemperatureSoilSnow) )  &
        allocate( noahmp%energy%state%TemperatureSoilSnow(-NumSnowLayerMax+1:NumSoilLayer) )
     if ( .not. allocated(noahmp%energy%state%ThermConductSoilSnow) ) &
@@ -200,6 +201,7 @@ contains
        allocate( noahmp%energy%state%AlbedoSfcDir(1:NumSwRadBand) )
     if ( .not. allocated(noahmp%energy%state%AlbedoSfcDif) )         &
        allocate( noahmp%energy%state%AlbedoSfcDif(1:NumSwRadBand) )
+#endif
  
     noahmp%energy%state%TemperatureSoilSnow (:)     = undefined_real
     noahmp%energy%state%ThermConductSoilSnow(:)     = undefined_real
@@ -261,6 +263,7 @@ contains
     noahmp%energy%flux%HeatGroundTotMean            = undefined_real
     noahmp%energy%flux%HeatLatentIrriEvap           = 0.0
  
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%energy%flux%RadSwAbsVegDir) )      &
        allocate( noahmp%energy%flux%RadSwAbsVegDir(1:NumSwRadBand) )
     if ( .not. allocated(noahmp%energy%flux%RadSwAbsVegDif) )      &
@@ -287,6 +290,7 @@ contains
        allocate( noahmp%energy%flux%RadSwDownDif(1:NumSwRadBand) )
     if ( .not. allocated(noahmp%energy%flux%RadSwPenetrateGrd) )   &
        allocate( noahmp%energy%flux%RadSwPenetrateGrd(-NumSnowLayerMax+1:NumSoilLayer) )
+#endif
     
     noahmp%energy%flux%RadSwAbsVegDir    (:)        = undefined_real
     noahmp%energy%flux%RadSwAbsVegDif    (:)        = undefined_real
@@ -350,6 +354,7 @@ contains
     noahmp%energy%param%VegFracGreen                = undefined_real
     noahmp%energy%param%HeatCapacCanFac             = undefined_real
     
+#ifndef NOAHMP_ACC_COLUMNS
     if ( .not. allocated(noahmp%energy%param%LeafAreaIndexMon) )   &
        allocate( noahmp%energy%param%LeafAreaIndexMon(1:12) )
     if ( .not. allocated(noahmp%energy%param%StemAreaIndexMon) )   &
@@ -376,6 +381,7 @@ contains
        allocate( noahmp%energy%param%EmissivitySoilLake(1:2) )
     if ( .not. allocated(noahmp%energy%param%AlbedoLandIce) )      &
        allocate( noahmp%energy%param%AlbedoLandIce(1:NumSwRadBand) )
+#endif
     
     noahmp%energy%param%LeafAreaIndexMon  (:)       = undefined_real
     noahmp%energy%param%StemAreaIndexMon  (:)       = undefined_real

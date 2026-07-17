@@ -12,6 +12,9 @@ module VaporPressureSaturationMod
 contains
 
   subroutine VaporPressureSaturation(T, VapPresSatWat, VapPresSatIce, VapPresSatWatD, VapPresSatIceD)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: ESAT

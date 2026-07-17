@@ -9,6 +9,7 @@ module BiochemVarType
 ! -------------------------------------------------------------------------
 
   use Machine
+  use ConstantDefineMod
 
   implicit none
   save
@@ -149,6 +150,20 @@ module BiochemVarType
     real(kind=kind_noahmp) :: TurnoverCoeffRootVeg       ! root turnover coefficient [1/s] for generic vegetation
     real(kind=kind_noahmp) :: WoodRespCoeff              ! wood respiration coeficient [1/s]
 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: LeafDeathTempCoeffCrop      ! coeficient for leaf temperature stress death [1/s] for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: LeafDeathWaterCoeffCrop     ! coeficient for leaf water stress death [1/s] for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrLeafToGrain        ! fraction of carbohydrate flux transallocate from leaf to grain
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrStemToGrain        ! fraction of carbohydrate flux transallocate from stem to grain
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrRootToGrain        ! fraction of carbohydrate flux transallocate from root to grain
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrFracToLeaf         ! fraction of carbohydrate flux to leaf for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrFracToStem         ! fraction of carbohydrate flux to stem for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrFracToRoot         ! fraction of carbohydrate flux to root for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: CarbohydrFracToGrain        ! fraction of carbohydrate flux to grain for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: TurnoverCoeffLeafCrop       ! leaf turnover coefficient [1/s] for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: TurnoverCoeffStemCrop       ! stem turnover coefficient [1/s] for crop
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxCropGrowStage) :: TurnoverCoeffRootCrop       ! root tunrover coefficient [1/s] for crop
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: LeafDeathTempCoeffCrop      ! coeficient for leaf temperature stress death [1/s] for crop
     real(kind=kind_noahmp), allocatable, dimension(:) :: LeafDeathWaterCoeffCrop     ! coeficient for leaf water stress death [1/s] for crop
     real(kind=kind_noahmp), allocatable, dimension(:) :: CarbohydrLeafToGrain        ! fraction of carbohydrate flux transallocate from leaf to grain
@@ -161,6 +176,7 @@ module BiochemVarType
     real(kind=kind_noahmp), allocatable, dimension(:) :: TurnoverCoeffLeafCrop       ! leaf turnover coefficient [1/s] for crop
     real(kind=kind_noahmp), allocatable, dimension(:) :: TurnoverCoeffStemCrop       ! stem turnover coefficient [1/s] for crop
     real(kind=kind_noahmp), allocatable, dimension(:) :: TurnoverCoeffRootCrop       ! root tunrover coefficient [1/s] for crop
+#endif
 
   end type parameter_type
 

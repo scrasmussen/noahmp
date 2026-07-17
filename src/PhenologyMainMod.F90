@@ -6,12 +6,18 @@ module PhenologyMainMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf
+#endif
 
   implicit none
 
 contains
 
   subroutine PhenologyMain (noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: PHENOLOGY
@@ -139,8 +145,12 @@ contains
     elseif ( (OptDynamicVeg == 4) .or. (OptDynamicVeg == 5) .or. (OptDynamicVeg == 9) ) then  ! use yearly maximum vegetation fraction
        VegFrac = VegFracAnnMax
     else                                                                                      ! outside existing vegetation options
+#ifdef NOAHMP_ACC_COLUMNS
+       VegFrac = VegFracGreen
+#else
        write(*,*) "Un-recognized dynamic vegetation option (OptDynamicVeg)... "
        stop "Error: Namelist parameter OptDynamicVeg unknown"
+#endif
     endif
     ! use maximum vegetation fraction for crop run
     if ( (OptCropModel > 0) .and. (CropType > 0) ) then

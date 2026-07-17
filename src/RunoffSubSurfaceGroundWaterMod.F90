@@ -12,6 +12,9 @@ module RunoffSubSurfaceGroundWaterMod
 contains
 
   subroutine RunoffSubSurfaceGroundWater(noahmp)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Originally embeded in WATER subroutine instead of as a separate subroutine

@@ -17,6 +17,9 @@ module RunoffSurfaceDynamicVicMod
 contains
 
   subroutine RunoffSurfaceDynamicVic(noahmp, TimeStep, InfilRateAcc)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: DYNAMIC_VIC

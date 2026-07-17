@@ -148,6 +148,20 @@ contains
     noahmp%biochem%param%TurnoverCoeffRootVeg       = undefined_real
     noahmp%biochem%param%WoodRespCoeff              = undefined_real
 
+#ifdef NOAHMP_ACC_COLUMNS
+    noahmp%biochem%param%LeafDeathTempCoeffCrop  = undefined_real
+    noahmp%biochem%param%LeafDeathWaterCoeffCrop = undefined_real
+    noahmp%biochem%param%CarbohydrLeafToGrain    = undefined_real
+    noahmp%biochem%param%CarbohydrStemToGrain    = undefined_real
+    noahmp%biochem%param%CarbohydrRootToGrain    = undefined_real
+    noahmp%biochem%param%CarbohydrFracToLeaf     = undefined_real
+    noahmp%biochem%param%CarbohydrFracToStem     = undefined_real
+    noahmp%biochem%param%CarbohydrFracToRoot     = undefined_real
+    noahmp%biochem%param%CarbohydrFracToGrain    = undefined_real
+    noahmp%biochem%param%TurnoverCoeffLeafCrop   = undefined_real
+    noahmp%biochem%param%TurnoverCoeffStemCrop   = undefined_real
+    noahmp%biochem%param%TurnoverCoeffRootCrop   = undefined_real
+#else
     if ( .not. allocated(noahmp%biochem%param%LeafDeathTempCoeffCrop) )  &
        allocate( noahmp%biochem%param%LeafDeathTempCoeffCrop(1:NumCropGrowStage) )
     if ( .not. allocated(noahmp%biochem%param%LeafDeathWaterCoeffCrop) ) &
@@ -185,6 +199,7 @@ contains
     noahmp%biochem%param%TurnoverCoeffLeafCrop  (:) = undefined_real
     noahmp%biochem%param%TurnoverCoeffStemCrop  (:) = undefined_real
     noahmp%biochem%param%TurnoverCoeffRootCrop  (:) = undefined_real
+#endif
 
     end associate
 

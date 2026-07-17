@@ -13,6 +13,9 @@ module SoilSnowTemperatureSolverMod
 contains
 
   subroutine SoilSnowTemperatureSolver(noahmp, TimeStep, MatLeft1, MatLeft2, MatLeft3, MatRight)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: HSTEP
@@ -25,15 +28,27 @@ contains
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
     real(kind=kind_noahmp), intent(in)    :: TimeStep                             ! timestep (may not be the same as model timestep)
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+#else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight  ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1  ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft2  ! left-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft3  ! left-hand side term of the matrix
+#endif
 
 ! local variable
     integer                                           :: LoopInd                  ! layer loop index 
+#ifdef NOAHMP_ACC_COLUMNS
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatRightTmp
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer) :: MatLeft3Tmp
+#else
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRightTmp              ! temporary MatRight matrix coefficient
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft3Tmp              ! temporary MatLeft3 matrix coefficient
+#endif
 
 ! --------------------------------------------------------------------
     associate(                                                                &
@@ -45,8 +60,10 @@ contains
 ! ----------------------------------------------------------------------
 
     ! initialization
+#ifndef NOAHMP_ACC_COLUMNS
     if (.not. allocated(MatRightTmp)) allocate(MatRightTmp(-NumSnowLayerMax+1:NumSoilLayer))
     if (.not. allocated(MatLeft3Tmp)) allocate(MatLeft3Tmp(-NumSnowLayerMax+1:NumSoilLayer))
+#endif
     MatRightTmp = 0.0
     MatLeft3Tmp = 0.0
 
@@ -74,8 +91,10 @@ contains
     enddo
 
     ! deallocate local arrays to avoid memory leaks
+#ifndef NOAHMP_ACC_COLUMNS
     deallocate(MatRightTmp)
     deallocate(MatLeft3Tmp)
+#endif
 
     end associate
 

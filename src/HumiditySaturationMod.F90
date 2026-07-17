@@ -11,6 +11,9 @@ module HumiditySaturationMod
 contains
 
   subroutine HumiditySaturation(TemperatureAir, PressureAir, MixingRatioSat, MixingRatioSatTempD)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: CALHUM

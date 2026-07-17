@@ -8,12 +8,19 @@ module CanopyRadiationTwoStreamMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, sqrt => acc_sqrtf, &
+                                         atan => acc_atanf, tan => acc_tanf, acos => acc_acosf, cos => acc_cosf
+#endif
 
   implicit none
 
 contains
 
   subroutine CanopyRadiationTwoStream(noahmp, IndSwBnd, IndSwDif)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history -----------------------------------
 ! Original Noah-MP subroutine: TWOSTREAM
@@ -103,13 +110,14 @@ contains
        GapCanopyDif = 1.0
     else
        if ( OptCanopyRadiationTransfer == 1 ) then
-          VegDensity      = -log(max(1.0-VegFrac, 0.01)) / (ConstPI*TreeCrownRadius**2)
+          VegDensity      = -log(max(1.0-VegFrac, 0.01)) / (ConstPI*TreeCrownRadius*TreeCrownRadius)
           CrownDepth      = HeightCanopyTop - HeightCanopyBot
           CrownRadiusVert = 0.5 * CrownDepth
           SolarAngleTmp   = atan(CrownRadiusVert / TreeCrownRadius * tan(acos(max(0.01, CosSolarZenithAngle))))
          !GapBtwCanopy    = exp(TreeDensity * ConstPI * TreeCrownRadius**2 / cos(SolarAngleTmp))
-          GapBtwCanopy    = exp(-VegDensity * ConstPI * TreeCrownRadius**2 / cos(SolarAngleTmp))
-          FoliageDensity  = VegAreaIndEff / (1.33*ConstPI*TreeCrownRadius**3.0 * (CrownRadiusVert/TreeCrownRadius)*VegDensity)
+          GapBtwCanopy    = exp(-VegDensity * ConstPI * TreeCrownRadius*TreeCrownRadius / cos(SolarAngleTmp))
+          FoliageDensity  = VegAreaIndEff / (1.33*ConstPI*TreeCrownRadius*TreeCrownRadius*TreeCrownRadius * &
+                                             (CrownRadiusVert/TreeCrownRadius)*VegDensity)
           VegAreaIndTmp   = CrownDepth * FoliageDensity
           GapInCanopy     = (1.0 - GapBtwCanopy) * exp(-0.5*VegAreaIndTmp/CosSolarZenithAngle)
           GapCanopyDir    = min( 1.0-VegFrac, GapBtwCanopy+GapInCanopy )
@@ -147,7 +155,8 @@ contains
     UpscatCoeffLeafDir = (1.0 + OpticDepthDif * OpticDepthDir) / &
                          (ScatCoeffLeaf * OpticDepthDif * OpticDepthDir) * SingleScatAlb
     UpscatCoeffLeafDif = 0.5 * (ReflectanceVeg(IndSwBnd) + TransmittanceVeg(IndSwBnd) + &
-                         (ReflectanceVeg(IndSwBnd)-TransmittanceVeg(IndSwBnd))*((1.0+LeafOrientIndex)/2.0)**2)/ScatCoeffLeaf
+                         (ReflectanceVeg(IndSwBnd)-TransmittanceVeg(IndSwBnd))* &
+                         ((1.0+LeafOrientIndex)/2.0)*((1.0+LeafOrientIndex)/2.0))/ScatCoeffLeaf
 
     ! adjust omega, betad, and betai for intercepted snow
     if ( TemperatureCanopy > ConstFreezePoint ) then  ! no snow on leaf

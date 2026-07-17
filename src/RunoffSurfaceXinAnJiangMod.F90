@@ -14,6 +14,9 @@ module RunoffSurfaceXinAnJiangMod
 contains
 
   subroutine RunoffSurfaceXinAnJiang(noahmp, TimeStep)
+#ifdef NOAHMP_ACC_COLUMNS
+!$acc routine seq
+#endif
 
 ! ------------------------ Code history --------------------------------------------------
 ! Original Noah-MP subroutine: COMPUTE_XAJ_SURFRUNOFF
