@@ -29,10 +29,13 @@ contains
     type(noahmp_type)     , intent(inout) :: noahmp
     real(kind=kind_noahmp), intent(in)    :: TimeStep                             ! timestep (may not be the same as model timestep)
 #ifdef NOAHMP_ACC_COLUMNS
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+    ! Bounds must match the actual arrays declared in SoilSnowTemperatureMainMod.
+    ! A plain dimension(:) dummy rebases to 1 and sends the negative snow-layer
+    ! indices (LoopInd from NumSnowLayerNeg+1) off the front of the array.
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft3
 #else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight  ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1  ! left-hand side term of the matrix
@@ -83,7 +86,8 @@ contains
 
     ! solve the tri-diagonal matrix equation
     call MatrixSolverTriDiagonal(MatLeft3,MatLeft1,MatLeft2,MatLeft3Tmp,MatRightTmp,&
-                                 MatRight,NumSnowLayerNeg+1,NumSoilLayer,NumSnowLayerMax)
+                                 MatRight,NumSnowLayerNeg+1,NumSoilLayer,NumSnowLayerMax,&
+                                 lbound(MatLeft3,1))
 
     ! update snow & soil temperature
     do LoopInd = NumSnowLayerNeg+1, NumSoilLayer

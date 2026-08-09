@@ -66,7 +66,8 @@ contains
 
     ! solve the tri-diagonal matrix equation
     call MatrixSolverTriDiagonal(MatLeft3,MatLeft1,MatLeft2,MatLeft3Tmp,MatRightTmp,MatRight,&
-                                 NumSnowLayerNeg+1,NumSoilLayer,NumSnowLayerMax)
+                                 NumSnowLayerNeg+1,NumSoilLayer,NumSnowLayerMax,&
+                                 lbound(MatLeft3,1))
 
     ! update snow & glacier temperature
     do LoopInd = NumSnowLayerNeg+1, NumSoilLayer

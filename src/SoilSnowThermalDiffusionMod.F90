@@ -30,10 +30,13 @@ contains
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
 #ifdef NOAHMP_ACC_COLUMNS
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+    ! Bounds must match the actual arrays declared in SoilSnowTemperatureMainMod.
+    ! A plain dimension(:) dummy rebases to 1 and sends the negative snow-layer
+    ! indices off the front of the array.
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(-NoahmpAccMaxSnowLayer+1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft3
 #else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight  ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1  ! left-hand side term of the matrix

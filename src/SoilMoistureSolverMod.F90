@@ -30,10 +30,14 @@ contains
     real(kind=kind_noahmp), intent(in)    :: TimeStep                               ! timestep (may not be the same as model timestep)
     real(kind=kind_noahmp), intent(out)   :: SubDeficit                             ! per-call subsurface deficit from negative-SH2O fix [m]
 #ifdef NOAHMP_ACC_COLUMNS
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+    ! Bounds must match the actual arrays declared in SoilWaterMainMod, which
+    ! are soil-only and 1-based -- NOT the -NoahmpAccMaxSnowLayer+1 lower bound
+    ! used on the snow paths. Declaring those bounds here would sequence-
+    ! associate dummy(1) onto actual(11) and silently corrupt results.
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft3
 #else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight    ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1    ! left-hand side term of the matrix
@@ -99,7 +103,8 @@ contains
     enddo
 
     ! call ROSR12 to solve the tri-diagonal matrix
-    call MatrixSolverTriDiagonal(MatLeft3,MatLeft1,MatLeft2,MatLeft3Tmp,MatRightTmp,MatRight,1,NumSoilLayer,0)
+    call MatrixSolverTriDiagonal(MatLeft3,MatLeft1,MatLeft2,MatLeft3Tmp,MatRightTmp,MatRight,1,NumSoilLayer,0,&
+                                 lbound(MatLeft3,1))
 
     do LoopInd = 1, NumSoilLayer
         SoilLiqWater(LoopInd) = SoilLiqWater(LoopInd) + MatLeft3(LoopInd)

@@ -30,10 +30,13 @@ contains
 ! in & out variables
     type(noahmp_type)     , intent(inout) :: noahmp
 #ifdef NOAHMP_ACC_COLUMNS
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatRight
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft1
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft2
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: MatLeft3
+    ! Bounds must match the actual arrays declared in SoilWaterMainMod, which
+    ! are soil-only and 1-based -- NOT the -NoahmpAccMaxSnowLayer+1 lower bound
+    ! used on the snow paths (that would shift every index by 10).
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatRight
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft1
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft2
+    real(kind=kind_noahmp), dimension(1:NoahmpAccMaxSoilLayer), intent(inout) :: MatLeft3
 #else
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:), intent(inout) :: MatLeft1     ! left-hand side term of the matrix

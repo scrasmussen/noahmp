@@ -10,7 +10,8 @@ module MatrixSolverTriDiagonalMod
 
 contains
 
-  subroutine MatrixSolverTriDiagonal(P, A, B, C, D, Delta, IndTopLayer, NumSoilLayer, NumSnowLayerMax)
+  subroutine MatrixSolverTriDiagonal(P, A, B, C, D, Delta, IndTopLayer, NumSoilLayer, NumSnowLayerMax, &
+                                     ArrLowBound)
 #ifdef NOAHMP_ACC_COLUMNS
 !$acc routine seq
 #endif
@@ -42,9 +43,18 @@ contains
     integer               , intent(in) :: IndTopLayer          ! top layer index: soil layer starts from IndTopLayer = 1
     integer               , intent(in) :: NumSoilLayer         ! number of soil layers
     integer               , intent(in) :: NumSnowLayerMax      ! maximum number of snow layers
+    ! Lower bound of the actual argument arrays. Callers pass lbound(...,1) of
+    ! the arrays they hand in. Needed only for NOAHMP_ACC_COLUMNS, where the
+    ! actuals are fixed-size arrays whose lower bound differs per call path
+    ! (-NoahmpAccMaxSnowLayer+1 for the snow/glacier matrices, 1 for the
+    ! soil-only ones), so the non-ACC "-NumSnowLayerMax+1" form cannot express
+    ! it. A plain assumed-shape dimension(:) dummy would silently rebase to 1
+    ! and send the negative snow-layer indices off the front of the array.
+    ! Unused in the non-ACC build, which keeps its original explicit bounds.
+    integer               , intent(in) :: ArrLowBound
 #ifdef NOAHMP_ACC_COLUMNS
-    real(kind=kind_noahmp), dimension(:), intent(in)    :: A, B, D    ! Tri-diagonal matrix elements
-    real(kind=kind_noahmp), dimension(:), intent(inout) :: C,P,Delta  ! Tri-diagonal matrix elements
+    real(kind=kind_noahmp), dimension(ArrLowBound:), intent(in)    :: A, B, D    ! Tri-diagonal matrix elements
+    real(kind=kind_noahmp), dimension(ArrLowBound:), intent(inout) :: C,P,Delta  ! Tri-diagonal matrix elements
 #else
     real(kind=kind_noahmp), dimension(-NumSnowLayerMax+1:NumSoilLayer), intent(in)    :: A, B, D    ! Tri-diagonal matrix elements
     real(kind=kind_noahmp), dimension(-NumSnowLayerMax+1:NumSoilLayer), intent(inout) :: C,P,Delta  ! Tri-diagonal matrix elements
