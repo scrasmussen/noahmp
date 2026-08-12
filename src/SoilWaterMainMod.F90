@@ -167,11 +167,20 @@ contains
     if ( OptRunoffSurface == 2 ) call RunoffSurfaceTopModelEqui(noahmp)
 #endif
     if ( OptRunoffSurface == 3 ) call RunoffSurfaceFreeDrain(noahmp,SoilTimeStep)
+    ! Option 7 is device-capable (RunoffSurfaceXinAnJiangMod is in
+    ! NOAHMP_ACC_COLUMN_SOURCES), so it must sit OUTSIDE the guard. It used to
+    ! be inside, which meant a GPU build with RUNOFF_OPTION=7 -- the setting in
+    ! this case's namelist.hrldas -- silently computed no surface runoff and no
+    ! InfilRateSfc, giving a one-signed dry bias in SOILSAT_TOP.
+    if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,SoilTimeStep)
 #ifndef NOAHMP_ACC_COLUMNS
+    ! Options 4, 5, 6, 8 stay host-only: their modules are not in
+    ! NOAHMP_ACC_COLUMN_SOURCES, so referencing them from device code would
+    ! leave unresolved symbols at nvlink. Each is the same latent defect as
+    ! option 7 was, for a configuration this case does not currently use.
     if ( OptRunoffSurface == 4 ) call RunoffSurfaceBATS(noahmp)
     if ( OptRunoffSurface == 5 ) call RunoffSurfaceTopModelMMF(noahmp)
     if ( OptRunoffSurface == 6 ) call RunoffSurfaceVIC(noahmp,SoilTimeStep)
-    if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,SoilTimeStep)
     if ( OptRunoffSurface == 8 ) call RunoffSurfaceDynamicVic(noahmp,SoilTimeStep,InfilSfcAcc)
 #endif
 
@@ -190,9 +199,10 @@ contains
     do IndIter = 1, NumIterSoilWat
        if ( SoilSfcInflowMean > 0.0 ) then
           if ( OptRunoffSurface == 3 ) call RunoffSurfaceFreeDrain(noahmp,TimeStepFine)
+          ! Device-capable; see the note on the first call site above.
+          if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,TimeStepFine)
 #ifndef NOAHMP_ACC_COLUMNS
           if ( OptRunoffSurface == 6 ) call RunoffSurfaceVIC(noahmp,TimeStepFine)
-          if ( OptRunoffSurface == 7 ) call RunoffSurfaceXinAnJiang(noahmp,TimeStepFine)
           if ( OptRunoffSurface == 8 ) call RunoffSurfaceDynamicVic(noahmp,TimeStepFine,InfilSfcAcc)
 #endif
        endif

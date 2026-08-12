@@ -5,8 +5,31 @@ module SnowCoverGroundNiu07Mod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+  ! Measured on CCE 19.0.0 with -h acc -target-accel=nvidia80, which device
+  ! intrinsics actually LINK inside !$acc routine seq:
+  !
+  !     sqrt              LINKS  (maps to a hardware instruction)
+  !     x**y  const expo  links  -- only because -O2 constant-folds it
+  !     x**y  runtime exp FAILS  (_HEXP, _HLOG)
+  !     exp / log / log10 FAILS  (_HEXP, _HLOG, _HLOG10)
+  !     tanh / tan / atan / acos / cos   FAILS
+  !
+  ! So sqrt is the only intrinsic that can replace a shim here. tanh and pow
+  ! both have to stay on the shim: SnowMeltFac is a runtime value, so `**`
+  ! below would emit _HEXP/_HLOG and fail at nvlink.
+  !
+  ! NOTE both shims are crude. acc_powf is exp(y*log(x)) through two more
+  ! approximations (and returns 0 for x<=0); acc_tanhf is (e-1)/(e+1) with
+  ! e=acc_expf(2x), which cancels badly for small x -- exactly the
+  ! shallow-snow regime FSNO is most sensitive to. These remain the prime
+  ! suspects for the ~392k one-signed FSNO differences vs the CPU, and the
+  ! fix is to make the shims accurate rather than to remove them.
 #ifdef NOAHMP_ACC_COLUMNS
   use NoahmpAccDeviceMathShimMod, only : tanh => acc_tanhf, pow => acc_powf
+#else
+  ! pow is a C-ism supplied only by the shim; on the host path it
+  ! comes from NoahmpMathHostMod, where it is the exact x**y.
+  use NoahmpMathHostMod, only : pow
 #endif
 
   implicit none

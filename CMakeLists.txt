@@ -120,6 +120,12 @@ if(NOAHMP_ACC_COLUMNS)
             ${CMAKE_CURRENT_SOURCE_DIR}/src/SnowpackHydrologyMod.F90
             ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilWaterMainMod.F90
             ${CMAKE_CURRENT_SOURCE_DIR}/src/RunoffSurfaceFreeDrainMod.F90
+            # Added so RUNOFF_OPTION=7 works on the device. Without it the two
+            # RunoffSurfaceXinAnJiang calls in SoilWaterMainMod sit inside
+            # #ifndef NOAHMP_ACC_COLUMNS and are compiled out, so the GPU never
+            # computes InfilRateSfc or RunoffSurface at all -- a systematic
+            # one-signed dry bias in SOILSAT_TOP (mean 0.007, max 0.278).
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/RunoffSurfaceXinAnJiangMod.F90
             ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilWaterDiffusionRichardsMod.F90
             ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilMoistureSolverMod.F90
             ${CMAKE_CURRENT_SOURCE_DIR}/src/RunoffSubSurfaceDrainageMod.F90
@@ -129,15 +135,62 @@ if(NOAHMP_ACC_COLUMNS)
             ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilWaterSupercoolKoren99Mod.F90
         )
 
+        # -------------------------------------------------------------------
+        # -O0 for the OpenACC sources.
+        #
+        # HARDCODED here rather than exposed as a cache option: re-running
+        # cmake (x.sh does) kept resetting the cached value, and a mis-set
+        # config produces a run that looks perfectly healthy while being
+        # byte-identical to the previous one -- an easy way to waste a cycle.
+        #
+        # Why -O0 at all: SnowWaterMainMod and SoilWaterMainMod already
+        # required it to work, i.e. Cray's OpenACC codegen at -O2 has
+        # demonstrably produced wrong results in this code before.
+        #
+        # The "-O0 on ALL 52 sources" experiment has since been RUN and came
+        # back NEGATIVE: exactly 1 of 906,542 differing LDASOUT values moved,
+        # so the optimizer is exonerated and the GPU-vs-CPU bias is
+        # source-level (it is the math shims). Hence this is back to the
+        # original two files.
+        #
+        # DO NOT put -O0 on the whole list again without reverting the sqrt
+        # change: -O0 stops the compiler inlining the hardware sqrt
+        # instruction, so it emits a call to 'sqrtf' which has no device
+        # implementation and nvlink fails. Measured on CCE 19.0.0:
+        #     fp1 -O2 -> sqrt LINKS      fp1 -O0 -> sqrt FAILS (sqrtf)
+        # Neither of the two files below calls sqrt, so they are safe at -O0.
+        #
+        # BISECTION (if ever needed again): replace the list below with an
+        # explicit subset, halving each time. The configure step prints how
+        # many sources got -O0; check that line, or
+        # `grep -c -- "-O0" <builddir>/.../noahmp_submodule.dir/flags.make`,
+        # before trusting a run.
+        # -------------------------------------------------------------------
+        set(NOAHMP_ACC_O0_SOURCES
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/SnowWaterMainMod.F90
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilWaterMainMod.F90)
+
         set_source_files_properties(
             ${NOAHMP_ACC_COLUMN_SOURCES}
-            PROPERTIES COMPILE_OPTIONS "-h;acc;-target-accel=nvidia80;-h;fp0"
+            # fp1, NOT fp0. Measured on CCE 19.0.0: at -h fp0 the compiler
+            # refuses the hardware sqrt instruction and emits a call to the
+            # precise libm 'sqrtf', which has no device implementation, so
+            # nvlink fails. At fp1/fp2 it inlines the instruction and links.
+            # fp1 also matches the host, which the top-level CMakeLists
+            # compiles at -h fp1 -- pinning these files at fp0 was a mismatch
+            # with the CPU baseline, not a stricter-is-better choice.
+            # (Only sqrt is recovered this way; exp/log/tanh/atan/acos/cos/tan
+            # and x**y with a runtime exponent fail at EVERY fp level, which
+            # is why NoahmpAccDeviceMathShimMod still has to exist.)
+            PROPERTIES COMPILE_OPTIONS "-h;acc;-target-accel=nvidia80;-h;fp1"
         )
         set_source_files_properties(
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/SnowWaterMainMod.F90
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/SoilWaterMainMod.F90
-            PROPERTIES COMPILE_OPTIONS "-h;acc;-target-accel=nvidia80;-h;fp0;-O0"
+            ${NOAHMP_ACC_O0_SOURCES}
+            PROPERTIES COMPILE_OPTIONS "-h;acc;-target-accel=nvidia80;-h;fp1;-O0"
         )
+        list(LENGTH NOAHMP_ACC_O0_SOURCES _noahmp_acc_o0_count)
+        list(LENGTH NOAHMP_ACC_COLUMN_SOURCES _noahmp_acc_total)
+        message("-- NoahMP ACC: -O0 applied to ${_noahmp_acc_o0_count} of ${_noahmp_acc_total} OpenACC sources")
     endif()
 endif()
 

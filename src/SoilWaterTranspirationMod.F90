@@ -8,6 +8,10 @@ module SoilWaterTranspirationMod
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
   use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, pow => acc_powf
+#else
+  ! pow is a C-ism supplied only by the shim; on the host path it
+  ! comes from NoahmpMathHostMod, where it is the exact x**y.
+  use NoahmpMathHostMod, only : pow
 #endif
 
   implicit none
@@ -87,7 +91,18 @@ contains
        enddo
 
        SoilTranspFacAcc = max(MinThr, SoilTranspFacAcc)
-       SoilTranspFac(1:NumSoilLayerRoot) = SoilTranspFac(1:NumSoilLayerRoot) / SoilTranspFacAcc
+       ! Written as an explicit loop rather than the array assignment
+       !     SoilTranspFac(1:NumSoilLayerRoot) = SoilTranspFac(1:NumSoilLayerRoot) / SoilTranspFacAcc
+       ! Because the same array appears on both sides, the standard requires
+       ! the RHS to be fully evaluated first, so the compiler must materialise
+       ! a temporary of runtime size NumSoilLayerRoot. On the device that
+       ! becomes a VLA allocation (__cray_device_alloc_vla), which nvlink
+       ! cannot resolve; -O2 happened to elide it, -O0 did not. The loop is
+       ! element-wise with no aliasing, so it is semantically identical and
+       ! needs no temporary at any optimisation level.
+       do IndSoil = 1, NumSoilLayerRoot
+          SoilTranspFac(IndSoil) = SoilTranspFac(IndSoil) / SoilTranspFacAcc
+       enddo
     endif
 
     end associate

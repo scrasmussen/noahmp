@@ -9,7 +9,9 @@ module CanopyRadiationTwoStreamMod
   use NoahmpVarType
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
-  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, sqrt => acc_sqrtf, &
+  ! sqrt intentionally omitted -- see AtmosForcingMod: the device intrinsic
+  ! links, is hardware-backed and correctly rounded, so it matches the host.
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, log => acc_logf, &
                                          atan => acc_atanf, tan => acc_tanf, acos => acc_acosf, cos => acc_cosf
 #endif
 

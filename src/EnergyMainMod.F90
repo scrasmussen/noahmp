@@ -53,7 +53,9 @@ module EnergyMainMod
   use SoilSnowTemperatureMainMod,     only : SoilSnowTemperatureMain
   use SoilSnowWaterPhaseChangeMod,    only : SoilSnowWaterPhaseChange
 #ifdef NOAHMP_ACC_COLUMNS
-  use NoahmpAccDeviceMathShimMod,      only : sqrt => acc_sqrtf
+    ! sqrt intentionally omitted -- see AtmosForcingMod: the device intrinsic
+  ! links, is hardware-backed and correctly rounded, so it matches the host.
+  ! (nothing else was imported here, so the shim import is dropped entirely)
 #endif
 
   implicit none

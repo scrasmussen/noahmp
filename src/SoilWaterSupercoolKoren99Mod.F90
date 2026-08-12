@@ -14,6 +14,10 @@ module SoilWaterSupercoolKoren99Mod
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
   use NoahmpAccDeviceMathShimMod, only : log => acc_logf, pow => acc_powf
+#else
+  ! pow is a C-ism supplied only by the shim; on the host path it
+  ! comes from NoahmpMathHostMod, where it is the exact x**y.
+  use NoahmpMathHostMod, only : pow
 #endif
 
   implicit none

@@ -6,7 +6,13 @@ module ResistanceCanopyStomataBallBerryMod
   use NoahmpVarType
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
-  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf, pow => acc_powf
+    ! sqrt intentionally omitted -- see AtmosForcingMod: the device intrinsic
+  ! links, is hardware-backed and correctly rounded, so it matches the host.
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, pow => acc_powf
+#else
+  ! pow is a C-ism supplied only by the shim; on the host path it
+  ! comes from NoahmpMathHostMod, where it is the exact x**y.
+  use NoahmpMathHostMod, only : pow
 #endif
 
   implicit none

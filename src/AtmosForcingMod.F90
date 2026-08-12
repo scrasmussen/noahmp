@@ -6,7 +6,14 @@ module AtmosForcingMod
   use NoahmpVarType
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
-  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf
+  ! sqrt is deliberately NOT taken from the shim: it is one of only two
+  ! intrinsics CCE 19.0.0 can actually link on the device (the other being
+  ! x**y with a compile-time-constant exponent), it maps to a hardware
+  ! instruction, and IEEE-754 requires it to be correctly rounded -- so it
+  ! matches the host bit-for-bit. acc_sqrtf was a fixed 10-iteration Newton
+  ! from the poor initial guess y=x, still ~20% off at x=1e6, and it returned
+  ! 0 for x<=0 where the CPU path returns NaN.
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf
 #endif
 
   implicit none

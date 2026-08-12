@@ -6,7 +6,9 @@ module ResistanceLeafToGroundMod
   use NoahmpVarType
   use ConstantDefineMod
 #ifdef NOAHMP_ACC_COLUMNS
-  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf, sqrt => acc_sqrtf
+    ! sqrt intentionally omitted -- see AtmosForcingMod: the device intrinsic
+  ! links, is hardware-backed and correctly rounded, so it matches the host.
+  use NoahmpAccDeviceMathShimMod, only : exp => acc_expf
 #endif
 
   implicit none

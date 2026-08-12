@@ -8,6 +8,22 @@ module RunoffSurfaceXinAnJiangMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+  ! The five x**y below all have RUNTIME exponents (shape parameters), and
+  ! CCE 19.0.0 cannot link x**y with a runtime exponent inside
+  ! !$acc routine seq -- it emits _HEXP/_HLOG, which nvlink cannot resolve.
+  ! Route them through the device shim, as SoilHydraulicPropertyMod already
+  ! does. Every base here is >= 0 by construction (SoilWaterTmp and
+  ! SoilWaterFree are min()-clamped to their maxima, and the branch guarding
+  ! the 0.5-TensionWatDistrInfl base requires it to be positive), so
+  ! acc_powf's x<=0 -> 0 behaviour is never reached in a way that differs
+  ! from Fortran's 0**y = 0.
+#ifdef NOAHMP_ACC_COLUMNS
+  use NoahmpAccDeviceMathShimMod, only : pow => acc_powf
+#else
+  ! pow is a C-ism supplied only by the shim; on the host path it
+  ! comes from NoahmpMathHostMod, where it is the exact x**y.
+  use NoahmpMathHostMod, only : pow
+#endif
 
   implicit none
 
@@ -87,19 +103,19 @@ contains
     ! solve pervious surface runoff (m) based on Eq. (310)
     if ( (SoilWaterTmp/SoilWaterMax) <= (0.5-TensionWatDistrInfl) ) then
        RunoffSfcPerv = (1.0-SoilImpervFrac(1)) * SoilSfcInflowMean * TimeStep * &
-                       ((0.5-TensionWatDistrInfl)**(1.0-TensionWatDistrShp)) * &
-                       ((SoilWaterTmp/SoilWaterMax)**TensionWatDistrShp)
+                       pow(0.5-TensionWatDistrInfl, 1.0-TensionWatDistrShp) * &
+                       pow(SoilWaterTmp/SoilWaterMax, TensionWatDistrShp)
     else
        RunoffSfcPerv = (1.0-SoilImpervFrac(1)) * SoilSfcInflowMean * TimeStep * &
-                       (1.0-(((0.5+TensionWatDistrInfl)**(1.0-TensionWatDistrShp)) * &
-                       ((1.0-(SoilWaterTmp/SoilWaterMax))**TensionWatDistrShp)))
+                       (1.0-(pow(0.5+TensionWatDistrInfl, 1.0-TensionWatDistrShp) * &
+                       pow(1.0-(SoilWaterTmp/SoilWaterMax), TensionWatDistrShp)))
     endif
 
     ! estimate surface runoff based on Eq. (313)
     if ( SoilSfcInflowMean == 0.0 ) then
       RunoffSurface = 0.0
     else
-      RunoffSurface = RunoffSfcPerv * (1.0-((1.0-(SoilWaterFree/SoilWaterFreeMax))**FreeWatDistrShp)) + RunoffSfcImp
+      RunoffSurface = RunoffSfcPerv * (1.0-pow(1.0-(SoilWaterFree/SoilWaterFreeMax), FreeWatDistrShp)) + RunoffSfcImp
     endif
     RunoffSurface = RunoffSurface / TimeStep
     RunoffSurface = max(0.0,RunoffSurface)
