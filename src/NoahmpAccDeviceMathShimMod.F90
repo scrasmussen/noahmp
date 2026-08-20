@@ -45,84 +45,145 @@ contains
     acc_sqrtf = y
   end function acc_sqrtf
 
+  ! exp(x) in DOUBLE. The previous single-precision version had two accuracy
+  ! defects that this fixes:
+  !   1. Range reduction subtracted a float-rounded ln2 repeatedly in a loop, so
+  !      each subtraction injected ~1e-8 of error and they accumulated.
+  !      Here n is chosen directly (n = nint(x/ln2)) and ln2 is subtracted as a
+  !      Cody-Waite hi/lo pair, so n*ln2 is removed with no rounding error.
+  !   2. Only 8 Taylor terms. At the reduced-range edge |r| <= ln2/2 = 0.3466
+  !      the first omitted term was r**9/9! ~ 2.6e-10 -- visible in float.
+  !      16 terms leave r**17/17! ~ 1e-21, far below double epsilon.
+  real(c_double) function acc_exp_d(x)
+!$acc routine seq
+    real(c_double), value :: x
+    integer :: n, k, m
+    real(c_double) :: r, term, sum, p, b
+    real(c_double), parameter :: invln2 = 1.4426950408889634_c_double
+    real(c_double), parameter :: ln2_hi = 6.93147180369123816490e-01_c_double
+    real(c_double), parameter :: ln2_lo = 1.90821492927058770002e-10_c_double
+
+    ! Clamp to +/-150. Every caller (acc_expf, acc_powf, acc_tanhf) returns a
+    ! FLOAT, and float exp overflows by x ~ 88.7 and underflows by x ~ -103, so
+    ! this loses nothing. It also bounds |n| <= 217, which keeps the squaring
+    ! loop below to 8 iterations with b peaking at 2**128 -- comfortably inside
+    ! double range.
+    r = x
+    if (r >  150.0_c_double) r =  150.0_c_double
+    if (r < -150.0_c_double) r = -150.0_c_double
+
+    n = nint(r * invln2)
+    ! Two-part subtraction: (x - n*ln2_hi) is exact-ish, then remove the tail.
+    r = (r - real(n, c_double) * ln2_hi) - real(n, c_double) * ln2_lo
+
+    sum  = 1.0_c_double
+    term = 1.0_c_double
+    do k = 1, 16
+       term = term * r / real(k, c_double)
+       sum  = sum + term
+    end do
+
+    ! Scale by 2**n WITHOUT using `2.0_c_double ** n`.
+    !
+    ! That expression looks like plain integer exponentiation, but Cray emits a
+    ! call to the helper `_RTOI` (real-to-integer power), which nvlink cannot
+    ! resolve on the device:
+    !     nvlink error : Undefined reference to '_RTOI'
+    ! Same family as the _HEXP/_HLOG failures for `x**y` with a runtime real
+    ! exponent -- see the intrinsic-availability table in CLAUDE.md. Assuming
+    ! the compiler would expand it inline was wrong.
+    !
+    ! Binary exponentiation instead: <= 8 iterations, all plain multiplies.
+    p = 1.0_c_double
+    if (n >= 0) then
+       b = 2.0_c_double
+       m = n
+    else
+       b = 0.5_c_double
+       m = -n
+    endif
+    do while (m > 0)
+       if (mod(m, 2) == 1) p = p * b
+       b = b * b
+       m = m / 2
+    end do
+
+    acc_exp_d = sum * p
+  end function acc_exp_d
+
   real(c_float) function acc_expf(x)
 !$acc routine seq
     real(c_float), value :: x
-    integer :: i, n
-    real(c_float) :: r, term, y
-    real(c_float), parameter :: ln2 = 0.6931471805599453_c_float
-
-    r = x
-    if (r > 80.0_c_float) r = 80.0_c_float
-    if (r < -80.0_c_float) r = -80.0_c_float
-
-    n = 0
-    do while (r > 0.34657359027997264_c_float)
-       r = r - ln2
-       n = n + 1
-    enddo
-    do while (r < -0.34657359027997264_c_float)
-       r = r + ln2
-       n = n - 1
-    enddo
-
-    y = 1.0_c_float
-    term = 1.0_c_float
-    do i = 1, 8
-       term = term * r / real(i, c_float)
-       y = y + term
-    enddo
-
-    if (n > 0) then
-       do i = 1, n
-          y = y * 2.0_c_float
-       enddo
-    elseif (n < 0) then
-       do i = 1, -n
-          y = y * 0.5_c_float
-       enddo
-    endif
-    acc_expf = y
+    acc_expf = real(acc_exp_d(real(x, c_double)), c_float)
   end function acc_expf
 
-  real(c_float) function acc_logf(x)
+  ! log(x) in DOUBLE. Improvements over the single-precision version:
+  !   1. Mantissa reduced to [1/sqrt2, sqrt2) instead of [0.75, 1.5). That caps
+  !      |z| = |(y-1)/(y+1)| at 0.1716 instead of 0.2, and more importantly makes
+  !      the interval symmetric in log space so the series converges uniformly.
+  !   2. 11 series terms (through z**21) instead of 7, leaving z**23/23 ~ 1e-19.
+  !   3. n*ln2 recombined from a Cody-Waite hi/lo pair rather than one rounded
+  !      float constant -- that constant alone cost ~1e-7 relative for large |n|.
+  real(c_double) function acc_log_d(x)
 !$acc routine seq
-    real(c_float), value :: x
-    integer :: i, n
-    real(c_float) :: y, z, z2, term, sum
-    real(c_float), parameter :: ln2 = 0.6931471805599453_c_float
+    real(c_double), value :: x
+    integer :: k, n
+    real(c_double) :: y, z, z2, term, sum
+    real(c_double), parameter :: ln2_hi = 6.93147180369123816490e-01_c_double
+    real(c_double), parameter :: ln2_lo = 1.90821492927058770002e-10_c_double
+    real(c_double), parameter :: sqrt2  = 1.4142135623730951_c_double
+    real(c_double), parameter :: isqrt2 = 0.7071067811865476_c_double
 
-    if (x <= 0.0_c_float) then
-       acc_logf = -80.0_c_float
+    if (x <= 0.0_c_double) then
+       acc_log_d = -700.0_c_double     ! preserves the old sentinel behaviour
        return
     endif
 
     y = x
     n = 0
-    do while (y > 1.5_c_float)
-       y = y * 0.5_c_float
+    do while (y >= sqrt2)
+       y = y * 0.5_c_double
        n = n + 1
-    enddo
-    do while (y < 0.75_c_float)
-       y = y * 2.0_c_float
+    end do
+    do while (y < isqrt2)
+       y = y * 2.0_c_double
        n = n - 1
-    enddo
+    end do
 
-    z = (y - 1.0_c_float) / (y + 1.0_c_float)
-    z2 = z * z
+    z    = (y - 1.0_c_double) / (y + 1.0_c_double)
+    z2   = z * z
     term = z
-    sum = term
-    do i = 3, 15, 2
+    sum  = z
+    do k = 3, 21, 2
        term = term * z2
-       sum = sum + term / real(i, c_float)
-    enddo
-    acc_logf = 2.0_c_float * sum + real(n, c_float) * ln2
+       sum  = sum + term / real(k, c_double)
+    end do
+
+    acc_log_d = 2.0_c_double * sum &
+              + real(n, c_double) * ln2_hi + real(n, c_double) * ln2_lo
+  end function acc_log_d
+
+  real(c_float) function acc_logf(x)
+!$acc routine seq
+    real(c_float), value :: x
+    if (x <= 0.0_c_float) then
+       acc_logf = -80.0_c_float        ! unchanged sentinel for the float path
+    else
+       acc_logf = real(acc_log_d(real(x, c_double)), c_float)
+    endif
   end function acc_logf
 
   real(c_float) function acc_log10f(x)
 !$acc routine seq
     real(c_float), value :: x
-    acc_log10f = acc_logf(x) * 0.4342944819032518_c_float
+    real(c_double), parameter :: invln10 = 0.43429448190325182765_c_double
+    if (x <= 0.0_c_float) then
+       acc_log10f = -80.0_c_float * 0.4342944819032518_c_float
+    else
+       ! Scale in double before rounding, rather than rounding log(x) to float
+       ! first and then multiplying -- that double rounding cost ~1 ulp.
+       acc_log10f = real(acc_log_d(real(x, c_double)) * invln10, c_float)
+    endif
   end function acc_log10f
 
   ! atan(t) for |t| <= tan(pi/12) = 0.26795, in double.
@@ -313,18 +374,42 @@ contains
     acc_tanf = acc_sinf(x) / c
   end function acc_tanf
 
+  ! tanh(x). The previous version was the WORST shim in the module at 1.0e-04
+  ! worst-case relative error -- ~1000x float epsilon -- and its error peaked at
+  ! SMALL |x|, which is precisely the shallow-snow regime FSNO is most sensitive
+  ! to (SnowCoverGroundNiu07Mod is the only consumer).
+  !
+  ! The defect was catastrophic cancellation. It formed e = exp(2x) and then
+  ! (e-1)/(e+1). For x = 1e-5, e = 1.00002, so "e - 1" subtracts two nearly
+  ! equal floats: the 2e-5 result keeps only ~3 significant digits because
+  ! everything above them cancelled.
+  !
+  ! Two fixes:
+  !   * small |x|: use the Maclaurin series, which has no subtraction at all.
+  !     tanh(x) = x - x^3/3 + 2x^5/15 - ...; at |x| <= 1e-3 the first omitted
+  !     term (17x^7/315) is ~5e-23 relative, i.e. exact in double.
+  !   * elsewhere: evaluate (e-1)/(e+1) in DOUBLE. The cancellation still
+  !     happens but it removes ~16 digits, not ~7, so the float result is
+  !     correctly rounded.
   real(c_float) function acc_tanhf(x)
 !$acc routine seq
     real(c_float), value :: x
-    real(c_float) :: e
+    real(c_double) :: xd, x2, e
 
-    if (x > 10.0_c_float) then
-       acc_tanhf = 1.0_c_float
-    elseif (x < -10.0_c_float) then
+    xd = real(x, c_double)
+
+    if (xd >  20.0_c_double) then
+       acc_tanhf =  1.0_c_float          ! 1 - tanh(20) ~ 8e-18, below float eps
+    elseif (xd < -20.0_c_double) then
        acc_tanhf = -1.0_c_float
+    elseif (abs(xd) <= 1.0e-3_c_double) then
+       x2 = xd * xd
+       acc_tanhf = real(xd * (1.0_c_double &
+                   + x2 * (-1.0_c_double/3.0_c_double &
+                   + x2 * ( 2.0_c_double/15.0_c_double))), c_float)
     else
-       e = acc_expf(2.0_c_float * x)
-       acc_tanhf = (e - 1.0_c_float) / (e + 1.0_c_float)
+       e = acc_exp_d(2.0_c_double * xd)
+       acc_tanhf = real((e - 1.0_c_double) / (e + 1.0_c_double), c_float)
     endif
   end function acc_tanhf
 
@@ -379,13 +464,27 @@ contains
     acc_powif = y
   end function acc_powif
 
+  ! pow(x,y) = exp(y*log(x)). This is the highest-leverage shim in the module:
+  ! 13 consumers, including RunoffSurfaceXinAnJiangMod, which produces
+  ! SFCRUNOFF -- the single largest GPU-vs-CPU difference (498,689 cells), and
+  ! the head of the chain SFCRUNOFF -> infxsrt -> sfcheadsubrt (7.2M cells).
+  !
+  ! The old version compounded three float roundings: log rounded to float, the
+  ! product y*log(x) rounded to float, then exp rounded again. The middle one
+  ! dominated -- an absolute error d in the exponent becomes a RELATIVE error of
+  ! ~d in the result, so for |y*log(x)| ~ 10 a float product carried ~1e-6
+  ! relative error into every result. Measured worst case was 8.5e-07, ~7x
+  ! float epsilon.
+  !
+  ! Keeping the entire chain in double leaves one rounding, at the end.
   real(c_float) function acc_powf(x, y)
 !$acc routine seq
     real(c_float), value :: x, y
     if (x <= 0.0_c_float) then
-       acc_powf = 0.0_c_float
+       acc_powf = 0.0_c_float          ! unchanged: callers rely on 0**y = 0
     else
-       acc_powf = acc_expf(y * acc_logf(x))
+       acc_powf = real(acc_exp_d(real(y, c_double) * &
+                                 acc_log_d(real(x, c_double))), c_float)
     endif
   end function acc_powf
 
